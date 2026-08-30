@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Rubik_Glitch, Space_Grotesk } from "next/font/google";
 import Script from "next/script";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { ADSENSE_CLIENT, adsEnabled } from "@/lib/ads";
+import { GA_ID, analyticsEnabled } from "@/lib/analytics";
 import "./globals.css";
 
 /**
@@ -38,6 +40,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${glitch.variable} ${grotesk.variable} ${plexMono.variable} h-full antialiased`}>
       <body className="min-h-full grain">
         {children}
+        {/**
+         * GA4 via @next/third-parties, which loads gtag off the main thread
+         * and after hydration - the mic and the worklet must not queue behind
+         * a tag script. Absent entirely unless a measurement id is set.
+         */}
+        {analyticsEnabled && <GoogleAnalytics gaId={GA_ID} />}
         {/* afterInteractive, not beforeInteractive: the mic, the worklet and
             the first paint must never wait on an ad network. Absent entirely
             unless a publisher id is configured. */}

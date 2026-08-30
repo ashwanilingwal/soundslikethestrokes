@@ -259,6 +259,22 @@ reviews sites for substantive content, and a single-page toy may not be
 approved; and serving ads in the EEA/UK needs a consent mechanism, which this
 app does not currently have.
 
+## Analytics (GA4)
+
+Google Analytics 4 via `@next/third-parties/google`, gated on
+`NEXT_PUBLIC_GA_ID` exactly like the ads — nothing loads without it, so dev
+and the soundcheck stay free of third-party scripts. `lib/analytics.ts` holds
+the gate; the component sits in the root layout.
+
+Vercel Web Analytics was the first choice (cookieless, first-party) but its
+free allowance is small, so GA4 won on cost. The trade-off is real and worth
+remembering: **GA4 sets cookies**, so it is non-essential under GDPR/UK PECR
+and needs a consent mechanism for EEA/UK visitors. Combined with AdSense,
+that is now two reasons this app wants a consent banner it does not have.
+
+The id is the *Measurement ID* (`G-XXXXXXXXXX`) from Admin → Data streams →
+Web — not the numeric Stream ID beside it, and not a `UA-` id (GA3, dead).
+
 ## Deploying (Vercel)
 
 Zero config — `vercel` or a Git import is enough. The stage and soundcheck are

@@ -60,6 +60,12 @@ npx vercel
 A secure origin matters here: `getUserMedia` refuses to run over plain http,
 so the deployed HTTPS build is the only way to use this off localhost.
 
+### Analytics
+
+Google Analytics 4 is wired up and inert until you set `NEXT_PUBLIC_GA_ID` to
+your `G-XXXXXXXXXX` measurement id (Vercel env var, then redeploy). It is
+independent of the ads — you can enable one without the other.
+
 ### Ads
 
 Google AdSense is wired up but completely inert until you supply your own ids
