@@ -143,11 +143,23 @@ the default 70% they would resolve to ~75 ms of glide — a sung slide, which is
 the one thing these voices exist to not be. The slider visibly moves, so
 pulling it back stays obvious. Eval check `l` guards the invariant.
 
-Voices are chosen from one dropdown (`components/VoicePicker.tsx`) grouped by
-`voiceGroups()`. **Autotune leads the list**, since it is the headline feature
-and burying it under three artist groups hides it; Post Malone has no
-non-autotuned entries, so his artist group is dropped rather than rendered
-empty.
+### The two-step picker
+
+`components/VoicePicker.tsx` is two selects on one row: category, then who.
+
+| Category | Step two lists | Why |
+|---|---|---|
+| **Autotune** | singer names | "I want the robot voice" is a different question from "I want that record's sound" |
+| The Strokes | Julian's eras | |
+| AM | Alex Turner's eras | |
+| PM | Post Malone's eras | |
+
+Autotune leads because it is the headline feature. Three invariants the UI
+depends on, all guarded by eval check `m`: no category is empty, the `auto`
+category holds **exactly one** voice per singer (step two shows names there,
+so two entries for one singer would be ambiguous), and `voiceForCategory()`
+always returns a voice — it keeps the current singer where the target
+category has one, so Julian II → Autotune lands on Julian, not Alex.
 
 ### Label art
 
@@ -222,11 +234,36 @@ Then open `/soundcheck` in the browser and press run — it exercises the whole
 chain with an oscillator and needs no microphone. Only the final listen (mic +
 headphones) needs a human.
 
+## Ads (Google AdSense)
+
+Entirely inert unless `NEXT_PUBLIC_ADSENSE_CLIENT` is set — no third-party
+script, no `<ins>`, and `/ads.txt` 404s — so the app builds, runs and deploys
+with no ad account, and the soundcheck never races an ad network.
+
+- `lib/ads.ts` reads the env, `components/AdSlot.tsx` renders one responsive
+  unit, `app/ads.txt/route.ts` generates the file AdSense requires before it
+  will serve on a domain.
+- The script loads `afterInteractive`: the mic, the worklet and first paint
+  must never wait on an ad network.
+- **The slot sits below the fold on purpose.** The stage is built to fit one
+  screen; an ad inside that budget would break the thing the layout exists
+  for. `margin-top: auto` pushes it past the fold even when content is short.
+- `NEXT_PUBLIC_*` is inlined at build time, so changing the ids on Vercel
+  needs a redeploy, not just a restart.
+
+Setup is the owner's to do (an AdSense account cannot be created on their
+behalf): sign up, add the domain, copy the `ca-pub-…` id and a display unit's
+slot id into Vercel's env vars, redeploy, then confirm `/ads.txt` returns the
+publisher line. Two things worth knowing before counting on revenue: AdSense
+reviews sites for substantive content, and a single-page toy may not be
+approved; and serving ads in the EEA/UK needs a consent mechanism, which this
+app does not currently have.
+
 ## Deploying (Vercel)
 
-Zero config — `vercel` or a Git import is enough. Every route is static, there
-is no server code, no database and no env vars; the DSP runs entirely in the
-visitor's browser. Notes that actually matter:
+Zero config — `vercel` or a Git import is enough. The stage and soundcheck are
+static and the DSP runs entirely in the visitor's browser; the only server
+route is `/ads.txt`. Notes that actually matter:
 
 - **HTTPS is the point.** `getUserMedia` only works on a secure origin, so a
   deployed build is the first place this runs anywhere other than localhost.

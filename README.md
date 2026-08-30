@@ -5,12 +5,17 @@ band-limited robot — the Post Malone / T-Pain pitch snap crossed with a
 blown-out Strokes megaphone vocal. Everything runs in the browser; no audio
 ever leaves your machine.
 
-Thirteen era-inspired voices in one dropdown, autotune first: Julian
-Casablancas (Is This It, the I'll Try Anything Once demo, The Voidz, The New
-Abnormal), Alex Turner (Whatever People Say I Am, AM, Tranquility Base, The
-Car) and Post Malone (Stoney, Hollywood's Bleeding, Twelve Carat Toothache),
-plus hard-tuned "auto" takes on Julian and Alex. Picking one tells you exactly
-what differs from its siblings.
+Fourteen era-inspired voices behind two small dropdowns — pick a mode, then
+who:
+
+- **Autotune** → Julian Casablancas, Alex Turner or Post Malone, hard-snapped
+  to the grid
+- **The Strokes** → Is This It, the I'll Try Anything Once demo, The Voidz,
+  The New Abnormal
+- **AM** → Whatever People Say I Am, AM, Tranquility Base, The Car
+- **PM** → Stoney, Hollywood's Bleeding, Twelve Carat Toothache
+
+Picking one tells you exactly what differs from its siblings.
 
 Each voice is a picture disc: its own generated label art fills the whole
 record, which spins while you're live. The art is original geometry in an
@@ -55,11 +60,18 @@ npx vercel
 A secure origin matters here: `getUserMedia` refuses to run over plain http,
 so the deployed HTTPS build is the only way to use this off localhost.
 
+### Ads
+
+Google AdSense is wired up but completely inert until you supply your own ids
+— copy `.env.example` to `.env.local`, or set the two `NEXT_PUBLIC_ADSENSE_*`
+variables in Vercel and redeploy. See [AGENTS.md](AGENTS.md#ads-google-adsense)
+for the full setup and its caveats.
+
 ## Verifying changes
 
 ```bash
-npx tsx scripts/hardtune-eval.ts   # 15 offline DSP checks, no browser needed
-                                   # (two of them range-check every voice)
+npx tsx scripts/hardtune-eval.ts   # 16 offline checks, no browser needed
+                                   # (three of them validate every voice)
 npx tsc --noEmit && npm run lint && npm run build
 ```
 

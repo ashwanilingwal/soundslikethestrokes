@@ -376,6 +376,19 @@ body {
 .monitor-badge-on { background: rgba(255, 59, 48, 0.18); opacity: 1; }
 .monitor-badge-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
+/* --- ad slot ---------------------------------------------------------------
+   Sits below the one-screen stage. margin-top:auto pushes it past the fold
+   even when the content above is short, so the layout's whole point - no
+   scrolling to reach the controls - survives having an ad on the page. */
+
+.ad-slot {
+  margin-top: auto;
+  padding-top: 14px;
+  min-height: 90px;
+  width: 100%;
+  overflow: hidden;
+}
+
 /* --- chips ---------------------------------------------------------------- */
 
 .chip {

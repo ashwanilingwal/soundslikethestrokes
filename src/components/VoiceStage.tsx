@@ -2,6 +2,7 @@
 
 import { useRecorder } from "@/hooks/useRecorder";
 import { useVoiceFx } from "@/hooks/useVoiceFx";
+import { AdSlot } from "./AdSlot";
 import { AdvancedPanel } from "./AdvancedPanel";
 import { MacroBars } from "./MacroBars";
 import { MonitorBadge } from "./MonitorBadge";
@@ -78,6 +79,9 @@ export function VoiceStage() {
           onReset={fx.resetOverrides}
           onNoiseCancellation={fx.toggleNoiseCancellation}
         />
+
+        {/* Below the fold by design — see AdSlot. */}
+        <AdSlot />
 
         <footer className="stage-footer text-center text-[10px] leading-tight text-fg-dim">
           Runs entirely in your browser. Era-inspired voice characters and original label art — not clones, not the real

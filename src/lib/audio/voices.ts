@@ -43,9 +43,18 @@ export interface VoiceParams {
   semitoneShift: number;
 }
 
+/**
+ * Which of the four buckets a voice sits in. `auto` holds exactly one
+ * hard-tuned voice per singer, so that picking "Autotune" is followed by
+ * picking a NAME rather than another album; the band buckets hold that
+ * artist's eras.
+ */
+export type Category = "auto" | "strokes" | "am" | "pm";
+
 export interface Voice extends VoiceParams {
   id: string;
   artist: "julian" | "alex" | "posty";
+  category: Category;
   label: string;
   era: string;
   /** The one-line answer to "how is this different from the last one?" */
@@ -80,6 +89,7 @@ export const VOICES: Voice[] = [
   {
     id: "julian-1",
     artist: "julian",
+    category: "strokes",
     label: "Julian I",
     era: "Is This It · 2001",
     varies: "Narrow telephone band and hard clipping — the small-amp vocal. Driest and most distorted of the four.",
@@ -101,6 +111,7 @@ export const VOICES: Voice[] = [
   {
     id: "julian-2",
     artist: "julian",
+    category: "strokes",
     label: "Julian II",
     era: "I'll Try Anything Once · 2006 demo",
     varies: "Keeps the low end and veils the top instead of cutting it — warm and hazy, with a room around it. Sung glide, not a hard snap.",
@@ -122,6 +133,7 @@ export const VOICES: Voice[] = [
   {
     id: "julian-3",
     artist: "julian",
+    category: "strokes",
     label: "Julian III",
     era: "The Voidz · 2014→",
     varies: "Heavy digital crush and a seasick pitch wobble. Hard snap, darkest band — the most obviously processed.",
@@ -143,6 +155,7 @@ export const VOICES: Voice[] = [
   {
     id: "julian-4",
     artist: "julian",
+    category: "strokes",
     label: "Julian IV",
     era: "The New Abnormal · 2020",
     varies: "Lifted five semitones into the falsetto register — brightest, cleanest and wettest of the four, with almost none of the dirt.",
@@ -167,6 +180,7 @@ export const VOICES: Voice[] = [
   {
     id: "julian-auto",
     artist: "julian",
+    category: "auto",
     label: "Julian · Auto",
     era: "hard-tuned",
     varies: "Julian II's warm haze with the glide killed and the wet locked at 100% — every syllable stair-steps onto the grid.",
@@ -189,6 +203,7 @@ export const VOICES: Voice[] = [
   {
     id: "alex-1",
     artist: "alex",
+    category: "am",
     label: "Alex I",
     era: "Whatever People Say I Am · 2006",
     varies: "Bright, dry and barely coloured — wide-open top with a hard consonant edge. The least processed voice here.",
@@ -210,6 +225,7 @@ export const VOICES: Voice[] = [
   {
     id: "alex-2",
     artist: "alex",
+    category: "am",
     label: "Alex II",
     era: "AM · 2013",
     varies: "Smoother and rounder than the early one: gentle saturation, softer top, and real room behind it.",
@@ -231,6 +247,7 @@ export const VOICES: Voice[] = [
   {
     id: "alex-3",
     artist: "alex",
+    category: "am",
     label: "Alex III",
     era: "Tranquility Base Hotel & Casino · 2018",
     varies: "Dropped two semitones into the lounge-crooner register — close, dark and wet, with almost no bite.",
@@ -252,6 +269,7 @@ export const VOICES: Voice[] = [
   {
     id: "alex-4",
     artist: "alex",
+    category: "am",
     label: "Alex IV",
     era: "The Car · 2022",
     varies: "Silky orchestral croon with real vibrato — down one semitone, warmer and far more expressive than Tranquility Base.",
@@ -274,6 +292,7 @@ export const VOICES: Voice[] = [
   {
     id: "alex-auto",
     artist: "alex",
+    category: "auto",
     label: "Alex · Auto",
     era: "hard-tuned",
     varies: "The AM-era smoothness snapped hard to the grid — glide zero, no wobble, tuning fully exposed.",
@@ -294,8 +313,32 @@ export const VOICES: Voice[] = [
     art: { paper: "#12091c", ink: "#c08cff", motif: "burst" },
   },
   {
+    id: "posty-auto",
+    artist: "posty",
+    category: "auto",
+    label: "Posty · Auto",
+    era: "hard-tuned",
+    varies: "The archetype the other two are measured against: clean path, wide reverb, and nothing but the tune doing the work.",
+    autotuned: true,
+    retuneGlideMs: 0,
+    dryWet: 1,
+    drive: 3,
+    bits: 16,
+    downsampleFactor: 1,
+    highpassHz: 120,
+    highpassQ: 0.7,
+    lowpassHz: 9000,
+    presenceDb: 5,
+    warbleHz: 0,
+    warbleCents: 0,
+    roomMix: 0.4,
+    semitoneShift: 0,
+    art: { paper: "#1a0d14", ink: "#ff8fb8", motif: "burst" },
+  },
+  {
     id: "posty-1",
     artist: "posty",
+    category: "pm",
     label: "Posty I",
     era: "Stoney · 2016",
     varies: "Warm and hazy under a hard tune — rounded top, plenty of room, the melodic-drawl end of autotune.",
@@ -318,6 +361,7 @@ export const VOICES: Voice[] = [
   {
     id: "posty-2",
     artist: "posty",
+    category: "pm",
     label: "Posty II",
     era: "Hollywood's Bleeding · 2019",
     varies: "The stadium version: cleanest path here, brightest top, biggest reverb. Tuning is the only effect doing work.",
@@ -340,6 +384,7 @@ export const VOICES: Voice[] = [
   {
     id: "posty-3",
     artist: "posty",
+    category: "pm",
     label: "Posty III",
     era: "Twelve Carat Toothache · 2022",
     varies: "Rougher and darker: real saturation and a touch of crush behind the tune, less polish than the other two.",
@@ -370,18 +415,41 @@ export const ARTISTS = [
 export const DEFAULT_VOICE = VOICES[1]; // Julian II — the one that started this
 
 /**
- * Dropdown grouping. Autotuned voices lead, because they are the headline
- * feature and burying them under three artist groups hides them. Post Malone
- * has no non-autotuned entries, so his artist group is dropped rather than
- * rendered empty.
+ * The first of the two picker steps. Autotune leads: it is the headline
+ * feature, and it is the one bucket organised by SINGER rather than by album,
+ * because "I want the robot voice" is a different question from "I want that
+ * record's vocal sound".
  */
-export function voiceGroups(): { label: string; voices: Voice[] }[] {
-  const groups = [{ label: "Autotune", voices: VOICES.filter((v) => v.autotuned) }];
-  for (const artist of ARTISTS) {
-    const voices = VOICES.filter((v) => v.artist === artist.id && !v.autotuned);
-    if (voices.length) groups.push({ label: artist.name, voices });
-  }
-  return groups;
+export const CATEGORIES: { id: Category; label: string; hint: string }[] = [
+  { id: "auto", label: "Autotune", hint: "hard-snapped — pick a singer" },
+  { id: "strokes", label: "The Strokes", hint: "Julian Casablancas, by era" },
+  { id: "am", label: "AM", hint: "Arctic Monkeys — Alex Turner, by era" },
+  { id: "pm", label: "PM", hint: "Post Malone, by era" },
+];
+
+export function voicesIn(category: Category): Voice[] {
+  return VOICES.filter((v) => v.category === category);
+}
+
+export function artistName(artist: Voice["artist"]): string {
+  return ARTISTS.find((a) => a.id === artist)?.name ?? artist;
+}
+
+/**
+ * Second-step option text. Under Autotune that is the singer's name; under a
+ * band it is the era, since the singer is already implied by the bucket.
+ */
+export function optionLabel(voice: Voice): string {
+  return voice.category === "auto" ? artistName(voice.artist) : voice.era;
+}
+
+/**
+ * Moving between buckets keeps the singer when the target bucket has one -
+ * going from "Julian II" to Autotune should land on Julian, not Alex.
+ */
+export function voiceForCategory(category: Category, current: Voice): Voice {
+  const options = voicesIn(category);
+  return options.find((v) => v.artist === current.artist) ?? options[0];
 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;

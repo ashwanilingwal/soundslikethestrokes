@@ -11,7 +11,7 @@
 
 import { HardtuneKernel } from "../src/lib/dsp/hardtuneKernel";
 import { PROCESSOR_SOURCE } from "../src/lib/audio/graph";
-import { resolveParams, VOICES } from "../src/lib/audio/voices";
+import { ARTISTS, CATEGORIES, resolveParams, voiceForCategory, voicesIn, VOICES } from "../src/lib/audio/voices";
 import { CHROMATIC, majorMask, hzToMidi } from "../src/lib/dsp/scales";
 
 const SR = 48000;
@@ -319,6 +319,33 @@ function sine(hzAt: (t: number) => number, seconds: number, amp = 0.4): Float32A
     "l  autotuned voices snap with zero glide",
     auto.length >= 5 && bad.length === 0,
     `${auto.length} tagged auto (${auto.map((v) => v.label).join(", ")})${bad.length ? `; failing: ${bad.map((v) => v.id).join(",")}` : ""}`,
+  );
+}
+
+// ---------------- (m) the picker's structural invariants actually hold
+// The two-step picker assumes: no empty category, exactly one Autotune voice
+// per singer (step two lists NAMES there), and that switching category always
+// yields a voice. Break any of these and a dropdown renders blank.
+{
+  const problems: string[] = [];
+  for (const c of CATEGORIES) {
+    if (voicesIn(c.id).length === 0) problems.push(`empty category ${c.id}`);
+  }
+  for (const a of ARTISTS) {
+    const n = voicesIn("auto").filter((v) => v.artist === a.id).length;
+    if (n !== 1) problems.push(`${a.id} has ${n} autotune voices, want 1`);
+  }
+  for (const from of VOICES) {
+    for (const c of CATEGORIES) {
+      const landed = voiceForCategory(c.id, from);
+      if (!landed) problems.push(`${from.id} -> ${c.id} yielded nothing`);
+      else if (landed.category !== c.id) problems.push(`${from.id} -> ${c.id} landed in ${landed.category}`);
+    }
+  }
+  check(
+    "m  picker categories are well formed",
+    problems.length === 0,
+    `${CATEGORIES.length} categories, ${VOICES.length} voices${problems.length ? " -> " + problems.slice(0, 3).join("; ") : ""}`,
   );
 }
 
