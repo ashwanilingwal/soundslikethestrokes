@@ -30,7 +30,7 @@
  */
 
 import { HardtuneKernel } from "@/lib/dsp/hardtuneKernel";
-import type { Preset } from "./presets";
+import type { ResolvedParams } from "./voices";
 
 export type MicErrorKind = "denied" | "unavailable" | "insecure" | "unknown";
 
@@ -50,29 +50,18 @@ export interface Telemetry {
   rms: number;
 }
 
-export interface AdvancedParams {
-  retuneGlideMs: number;
-  dryWet: number;
-  drive: number;
-  bits: number;
-  downsampleFactor: number;
-  highpassHz: number;
-  lowpassHz: number;
-  presenceDb: number;
-  gateDb: number;
-  warbleHz: number;
-  warbleCents: number;
-  /** Reverb send, 0 = bone dry. */
-  roomMix: number;
-  masterGain: number;
-}
+/**
+ * Everything the graph can be told. Produced by resolveParams() in voices.ts,
+ * which is where the voice + macro-slider maths lives; this file only applies
+ * numbers to nodes.
+ */
+export type AdvancedParams = ResolvedParams;
 
 export interface VoiceGraph {
   context: AudioContext;
   analyser: AnalyserNode;
   /** Post-limiter feed for MediaRecorder. */
   recorderStream: MediaStream;
-  applyPreset(preset: Preset): void;
   setParams(params: Partial<AdvancedParams>): void;
   setScaleMask(mask: number[]): void;
   onTelemetry(cb: ((t: Telemetry) => void) | null): void;
@@ -110,6 +99,8 @@ class HardtuneProcessor extends AudioWorkletProcessor {
         );
       }
       if (m.gateThreshold !== undefined) this.kernel.setGate(m.gateThreshold);
+      if (m.denoise !== undefined) this.kernel.setDenoise(m.denoise);
+      if (m.semitoneShift !== undefined) this.kernel.setSemitoneShift(m.semitoneShift);
       if (m.warbleHz !== undefined || m.warbleCents !== undefined) {
         this.kernel.setWarble(
           m.warbleHz !== undefined ? m.warbleHz : this.kernel.warbleHz,
@@ -169,6 +160,29 @@ function makeRoomIR(ctx: AudioContext, seconds = 1.9, decay = 2.8): AudioBuffer 
   return ir;
 }
 
+/**
+ * Final safety ceiling. A DynamicsCompressor is a soft limiter, not a
+ * brickwall: with 1 ms attack and ratio 20 it lets transients through, and
+ * once the output slider can reach 2.5x that overshoot measured above full
+ * scale (1.037) and would clip the DAC.
+ *
+ * This curve is perfectly transparent below `t` and asymptotes to 1.0 above
+ * it, so nothing audible changes at sane levels and nothing can ever leave
+ * over full scale. WaveShaper clamps out-of-range input to the curve's
+ * endpoints, which caps even a 10x signal at the x=1 value (~0.93).
+ */
+function safetyCurve(t = 0.7): Float32Array<ArrayBuffer> {
+  const n = 2048;
+  const curve = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1;
+    const a = Math.abs(x);
+    const y = a <= t ? a : t + (1 - t) * Math.tanh((a - t) / (1 - t));
+    curve[i] = x < 0 ? -y : y;
+  }
+  return curve;
+}
+
 /** tanh(drive * x) / tanh(drive): unity at the rails, soft-clipped between. */
 function shaperCurve(drive: number): Float32Array<ArrayBuffer> {
   const n = 2048;
@@ -211,7 +225,6 @@ export interface EffectChain {
   output: AudioNode;
   analyser: AnalyserNode;
   recorderStream: MediaStream;
-  applyPreset(preset: Preset): void;
   setParams(params: Partial<AdvancedParams>): void;
   setScaleMask(mask: number[]): void;
   onTelemetry(cb: ((t: Telemetry) => void) | null): void;
@@ -223,7 +236,7 @@ export interface EffectChain {
  * can drive it with an oscillator instead of a microphone.
  * loadHardtuneModule must have completed on this context first.
  */
-export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain {
+export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): EffectChain {
   const hardtune = new AudioWorkletNode(ctx, "hardtune", {
     numberOfInputs: 1,
     numberOfOutputs: 1,
@@ -261,6 +274,12 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
   limiter.attack.value = 0.001;
   limiter.release.value = 0.08;
 
+  // Absolutely last, after the limiter: the thing that makes "output 250%"
+  // safe rather than merely loud.
+  const safety = ctx.createWaveShaper();
+  safety.curve = safetyCurve();
+  safety.oversample = "2x";
+
   const analyser = ctx.createAnalyser();
   analyser.fftSize = 2048;
 
@@ -268,8 +287,10 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
 
   hardtune.connect(shaper).connect(highpass).connect(presence).connect(lowpass).connect(master).connect(limiter);
   lowpass.connect(roomSend).connect(roomWet).connect(master);
-  limiter.connect(analyser);
-  limiter.connect(recorderDest);
+  limiter.connect(safety);
+  // Taps sit after the safety stage: what you hear is what you record.
+  safety.connect(analyser);
+  safety.connect(recorderDest);
 
   let telemetryCb: ((t: Telemetry) => void) | null = null;
   hardtune.port.onmessage = (e: MessageEvent<Telemetry>) => telemetryCb?.(e.data);
@@ -288,6 +309,7 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
     if (p.retuneGlideMs !== undefined) glideParam.setValueAtTime(p.retuneGlideMs, ctx.currentTime);
     if (p.drive !== undefined) shaper.curve = shaperCurve(p.drive);
     if (p.highpassHz !== undefined) ramp(highpass.frequency, p.highpassHz);
+    if (p.highpassQ !== undefined) ramp(highpass.Q, p.highpassQ);
     if (p.lowpassHz !== undefined) ramp(lowpass.frequency, p.lowpassHz);
     if (p.presenceDb !== undefined) ramp(presence.gain, p.presenceDb);
     if (p.roomMix !== undefined) ramp(roomWet.gain, p.roomMix);
@@ -302,41 +324,24 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
     if (p.warbleHz !== undefined || p.warbleCents !== undefined) {
       hardtune.port.postMessage({ warbleHz: p.warbleHz, warbleCents: p.warbleCents });
     }
-  };
-
-  const applyPreset = (next: Preset) => {
-    highpass.Q.value = next.highpassQ;
-    setParams({
-      retuneGlideMs: next.retuneGlideMs,
-      dryWet: next.dryWet,
-      drive: next.drive,
-      bits: next.bits,
-      downsampleFactor: next.downsampleFactor,
-      highpassHz: next.highpassHz,
-      lowpassHz: next.lowpassHz,
-      presenceDb: next.presenceDb,
-      gateDb: next.gateDb,
-      warbleHz: next.warbleHz,
-      warbleCents: next.warbleCents,
-      roomMix: next.roomMix,
-      masterGain: next.masterGain,
-    });
+    if (p.denoise !== undefined) hardtune.port.postMessage({ denoise: p.denoise });
+    if (p.semitoneShift !== undefined) hardtune.port.postMessage({ semitoneShift: p.semitoneShift });
   };
 
   // Filters need sane initial values before the first ramp targets land.
-  highpass.frequency.value = preset.highpassHz;
-  lowpass.frequency.value = preset.lowpassHz;
-  presence.gain.value = preset.presenceDb;
-  roomWet.gain.value = preset.roomMix;
-  master.gain.value = preset.masterGain;
-  applyPreset(preset);
+  highpass.frequency.value = initial.highpassHz;
+  highpass.Q.value = initial.highpassQ;
+  lowpass.frequency.value = initial.lowpassHz;
+  presence.gain.value = initial.presenceDb;
+  roomWet.gain.value = initial.roomMix;
+  master.gain.value = initial.masterGain;
+  setParams(initial);
 
   return {
     input: hardtune,
-    output: limiter,
+    output: safety,
     analyser,
     recorderStream: recorderDest.stream,
-    applyPreset,
     setParams,
     setScaleMask(mask: number[]) {
       hardtune.port.postMessage({ scaleMask: mask });
@@ -357,6 +362,7 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
         roomWet.disconnect();
         master.disconnect();
         limiter.disconnect();
+        safety.disconnect();
       } catch {
         // Already torn down.
       }
@@ -366,7 +372,7 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
 
 export type MonitorMode = "headphones" | "speakers";
 
-export async function startVoiceGraph(preset: Preset, monitor: MonitorMode = "headphones"): Promise<VoiceGraph> {
+export async function startVoiceGraph(initial: AdvancedParams, monitor: MonitorMode = "headphones"): Promise<VoiceGraph> {
   if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
     throw new MicError("insecure", "The browser won't share a microphone here. This needs https, or localhost.");
   }
@@ -399,7 +405,7 @@ export async function startVoiceGraph(preset: Preset, monitor: MonitorMode = "he
   await loadHardtuneModule(ctx);
 
   const source = ctx.createMediaStreamSource(stream);
-  const chain = buildEffectChain(ctx, preset);
+  const chain = buildEffectChain(ctx, initial);
   source.connect(chain.input);
   chain.output.connect(ctx.destination);
 
@@ -407,7 +413,6 @@ export async function startVoiceGraph(preset: Preset, monitor: MonitorMode = "he
     context: ctx,
     analyser: chain.analyser,
     recorderStream: chain.recorderStream,
-    applyPreset: chain.applyPreset,
     setParams: chain.setParams,
     setScaleMask: chain.setScaleMask,
     onTelemetry: chain.onTelemetry,

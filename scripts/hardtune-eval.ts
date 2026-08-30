@@ -223,6 +223,54 @@ function sine(hzAt: (t: number) => number, seconds: number, amp = 0.4): Float32A
   check("h  warble modulates the output pitch", track.length > 20 && range > 50 && range < 250, `${track.length} frames, pitch range ${range.toFixed(0)} cents`);
 }
 
+// ------------------------------------------------------- (i) transposition
+{
+  const kernel = new HardtuneKernel(SR);
+  kernel.setGlide(0);
+  kernel.setSemitoneShift(-2);
+  const out = run(kernel, sine(() => 220, 2)); // A3 = midi 57
+  const track = pitchTrack(out).filter((p) => p.at > SR);
+  const midis = track.map((p) => hzToMidi(p.hz)).sort((a, b) => a - b);
+  const median = midis[midis.length >> 1] ?? 0;
+  check(
+    "i  -2 semitone transpose lands on G3",
+    track.length > 20 && Math.abs(median - 55) < 0.4,
+    `${track.length} frames, median midi ${median.toFixed(2)} (want 55)`,
+  );
+}
+
+// ------------------- (j) the formula: periodicity beats level for denoising
+// The point of the clarity term. Noise and a tone at the SAME amplitude are
+// indistinguishable to a level-only gate; only periodicity separates them.
+{
+  const AMP = 0.05; // comfortably above the -45 dB threshold, both cases
+  let seed = 7654321;
+  const rand = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff) * 2 - 1;
+  const noise = new Float32Array(SR * 2);
+  for (let i = 0; i < noise.length; i++) noise[i] = AMP * rand();
+  const rms = (b: Float32Array) => Math.sqrt(b.reduce((s, v) => s + v * v, 0) / b.length);
+
+  const gateAt = Math.pow(10, -45 / 20);
+  const noiseKernel = new HardtuneKernel(SR);
+  noiseKernel.setGate(gateAt);
+  noiseKernel.setDenoise(1);
+  const noiseOut = run(noiseKernel, noise);
+
+  const toneKernel = new HardtuneKernel(SR);
+  toneKernel.setGate(gateAt);
+  toneKernel.setDenoise(1);
+  toneKernel.setGlide(0);
+  const toneOut = run(toneKernel, sine(() => 220, 2, AMP));
+
+  const noiseRms = rms(noiseOut.subarray(SR));
+  const toneRms = rms(toneOut.subarray(SR));
+  check(
+    "j  same level, only the voice gets through",
+    noiseRms < toneRms * 0.05 && toneRms > 0.01,
+    `aperiodic ${noiseRms.toExponential(2)} vs periodic ${toneRms.toExponential(2)} at identical amplitude`,
+  );
+}
+
 // ------------------------- (f) worklet source round-trips through eval
 // The browser evaluates PROCESSOR_SOURCE (built from HardtuneKernel.toString())
 // in a scope with no module helpers. Stub the worklet globals and run the

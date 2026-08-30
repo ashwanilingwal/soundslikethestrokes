@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { buildEffectChain, createContext, loadHardtuneModule } from "@/lib/audio/graph";
-import { POSTY } from "@/lib/audio/presets";
+import { resolveParams, VOICES } from "@/lib/audio/voices";
 import { HardtuneKernel } from "@/lib/dsp/hardtuneKernel";
 import { hzToMidi } from "@/lib/dsp/scales";
 
@@ -40,9 +40,12 @@ export default function Page() {
       await loadHardtuneModule(ctx);
       say("A. worklet module loaded  PASS");
 
-      // Clean settings: the tuner is what's under test, not the dirt.
-      const chain = buildEffectChain(ctx, POSTY);
-      chain.setParams({ drive: 1, bits: 16, downsampleFactor: 1, highpassHz: 60, lowpassHz: 12000, masterGain: 1, retuneGlideMs: 0 });
+      // Clean settings: the tuner is what's under test, not the dirt. The
+      // gate is off too - an oscillator has no room noise to remove, and a
+      // closed gate would just make every later check measure silence.
+      const base = resolveParams(VOICES[0], { match: 1, robot: 0, volume: 1, gateDb: -75, denoise: 0 });
+      const chain = buildEffectChain(ctx, base);
+      chain.setParams({ drive: 1, bits: 16, downsampleFactor: 1, highpassHz: 60, lowpassHz: 12000, masterGain: 1, retuneGlideMs: 0, warbleCents: 0, roomMix: 0, semitoneShift: 0 });
 
       const osc = ctx.createOscillator();
       const oscGain = ctx.createGain();
@@ -116,17 +119,26 @@ export default function Page() {
       chain.setParams({ bits: 16, downsampleFactor: 1 });
       say(`D. crusher: ${cleanUnique} distinct values clean vs ${crushedUnique} crushed  ${crushedUnique < cleanUnique / 4 ? "PASS" : "FAIL"}`);
 
-      // E. limiter holds the peak with the drive cranked.
-      chain.setParams({ drive: 12, masterGain: 1 });
-      oscGain.gain.value = 0.9;
-      await waitTicks(9);
-      let absPeak = 0;
-      for (let i = 0; i < 10; i++) {
-        an.getFloatTimeDomainData(buf);
-        for (const v of buf) absPeak = Math.max(absPeak, Math.abs(v));
-        await waitTicks(1);
-      }
-      say(`E. drive 12 into limiter: abs peak ${absPeak.toFixed(3)}  ${absPeak > 0.05 && absPeak < 0.99 ? "PASS" : "FAIL"}`);
+      // E. the output can never leave over full scale, even at the worst
+      // case the UI allows: max drive AND max boost.
+      const peakAt = async (drive: number, masterGain: number) => {
+        chain.setParams({ drive, masterGain });
+        oscGain.gain.value = 0.9;
+        await waitTicks(9);
+        let p = 0;
+        for (let i = 0; i < 10; i++) {
+          an.getFloatTimeDomainData(buf);
+          for (const v of buf) p = Math.max(p, Math.abs(v));
+          await waitTicks(1);
+        }
+        return p;
+      };
+      const normalPeak = await peakAt(12, 1);
+      const worstPeak = await peakAt(20, 2.5);
+      chain.setParams({ drive: 2, masterGain: 1 });
+      say(
+        `E. peak at drive 12 / boost 1.0: ${normalPeak.toFixed(3)}; at max drive 20 / boost 2.5: ${worstPeak.toFixed(3)}  ${normalPeak > 0.05 && normalPeak < 0.99 && worstPeak < 0.99 ? "PASS" : "FAIL"}`,
+      );
 
       // F. the room: after the source is cut, a wet chain must still ring.
       chain.setParams({ drive: 2, masterGain: 1, roomMix: 0 });

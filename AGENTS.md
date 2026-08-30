@@ -19,7 +19,7 @@ processed output for download.
 
 | Route | What |
 |---|---|
-| `/` | The stage: monitor-mode picker, go-live button, pitch readout, presets, knobs, recorder |
+| `/` | The stage: blocking monitor modal, spinning-vinyl transport, pitch readout, 3 macro bars, voice cards, fine tuning, recorder |
 | `/soundcheck` | Hidden diagnostics: drives the chain with an oscillator (no mic), prints PASS/FAIL lines |
 
 ## Signal chain
@@ -48,6 +48,9 @@ lib/dsp       pure DSP, no React, no Web Audio        (kernel + scales)
 lib/audio     Web Audio: graph.ts is the ONLY file constructing nodes; presets.ts is data
 hooks/        React ↔ graph bridges (useVoiceFx, useRecorder)
 components/   UI only — no DSP, no Web Audio, no literal colours (tokens from globals.css)
+              The vinyl transport is CSS-only: grooves are a repeating radial
+              gradient and the sheen sits OUTSIDE the rotating element, so the
+              highlight stays put while the disc turns under it.
 ```
 
 **`lib/dsp/hardtuneKernel.ts` may import nothing and reference nothing outside
@@ -73,34 +76,74 @@ fallback is to ship the compiled kernel as `public/hardtune-worklet.js` and
 - Dry tap reads at the shifter's mean delay so dry/wet mixing can't comb-filter.
 - Unvoiced: hold last ratio 200 ms (consonants at note-ends stay pitched), then
   relax to unity over 50 ms. Never bypass — a delay jump clicks.
-- Noise gate sits BEFORE the ring buffer, so room hiss neither reaches the
-  output nor confuses the detector. Downward gate with hysteresis (closes at
-  half the open threshold), 3 ms envelope attack, ~120 ms close fade. -75 dB
-  on the UI slider = off.
+- Transpose (`semitoneShift`) is applied to the *snapped* note, so it stays on
+  the grid. Alex III uses −2 for the lower register.
 - Warble = pitch LFO multiplied into the playback ratio (0–10 Hz, 0–100 cents):
   vibrato at small depths, melted-tape robot at large ones.
 - No allocation inside `process()`.
 
-## Presets
+### The noise gate, and why its position is load-bearing
 
-| Param | I'll Try Anything Once | The Strokes | Posty | Voidz |
-|---|---|---|---|---|
-| retune glide | 70 ms | 40 ms | 0 ms | 0 ms |
-| drive | 11 | 9 | 2 | 10 |
-| bits / downsample | 12 / 2× | 10 / 3× | 16 / 1× (off) | 8 / 4× |
-| band | 180–2600 Hz | 400–3400 Hz | 120–9000 Hz | 300–2800 Hz |
-| presence | +5 dB | +9 dB | +3 dB | +6 dB |
-| gate | -50 dB | -48 dB | -52 dB | -48 dB |
-| warble | 1.5 Hz / 12¢ | off | off | 5 Hz / 55¢ |
-| room | 0.38 | 0.12 | 0.18 | 0.25 |
-| master | 1.15 | 1.1 | 1.0 | 1.1 |
+Level alone cannot separate a laptop fan from a quiet vowel — they sit at the
+same dB. So the gate uses two signals:
 
-**I'll Try Anything Once is the default preset.** It targets the First
-Impressions *demo*, not the album cut: Julian close on a cheap mic in a room —
-warm and hazy, not megaphone-thin. Hence the low cut staying at 180 Hz (keeps
-the chest), a veiled rather than shredded top, high drive that soft-clips into
-tape saturation rather than fuzz, and a glide that is deliberately NOT zero —
-he slides between notes, and a hard robotic snap would be Posty, not Julian.
+1. **Level vs a learned floor.** While the gate is shut, whatever is arriving
+   *is* the room, so `noiseFloor` tracks it (up slowly over 2 s, down fast over
+   150 ms, so a fan is learned but a held note can never drag the floor up to
+   swallow the voice). Open threshold = `max(userThreshold, floor × (1 + 6 ×
+   denoise))`.
+2. **Periodicity.** A voice scores high NSDF clarity; fans, hiss and traffic
+   score near zero. The detector already computes it, so it is free here.
+
+Clarity is required to OPEN but never to STAY open — unvoiced consonants
+(s, t, k) have almost no periodicity, and demanding it continuously bites the
+front off every word.
+
+**The ring buffer gets the RAW input and the gate is applied at the OUTPUT.**
+Do not "optimise" this back to gating before the ring: the gate's own
+condition reads clarity, clarity comes from the detector, and the detector
+reads the ring — gate the ring and a shut gate feeds it silence, clarity pins
+to 0, and the gate can never satisfy the condition to reopen. Room noise
+reaching the detector is harmless, because acquiring a note needs clarity 0.6.
+Eval check `j` guards the whole arrangement: noise and a tone at *identical*
+amplitude, where only the tone gets through.
+
+## Voices and the macro model
+
+Six era-inspired characters — not voice clones, and the UI says so. Each
+card states what differs from its siblings, because "Julian I / II / III"
+communicates nothing on its own.
+
+| Voice | Era | What differs |
+|---|---|---|
+| Julian I | Is This It · 2001 | Narrow 450–3200 Hz telephone band, hard clipping, driest |
+| Julian II | I'll Try Anything Once · 2006 demo | Warm 180–2600 Hz, keeps the chest, roomy, sung glide |
+| Julian III | The Voidz · 2014→ | 8-bit crush, 5 Hz/55¢ seasick warble, hard snap |
+| Alex I | Whatever People Say I Am · 2006 | Bright, dry, barely coloured; wide 150–7000 Hz |
+| Alex II | AM · 2013 | Smoother, softer top, real room |
+| Alex III | Tranquility Base · 2018 | **−2 semitones**, dark 90–4000 Hz, wettest, least bite |
+
+**Julian II is the default.** It targets the First Impressions *demo*, not the
+album cut: warm and hazy, not megaphone-thin — hence the low cut at 180 Hz and
+a glide that is deliberately NOT zero, because he slides between notes and a
+hard robotic snap reads as Post Malone, not Julian.
+
+`resolveParams()` in `lib/audio/voices.ts` is the single source of truth for
+what the graph receives. Three macros feed it:
+
+- **match** (1–100%) interpolates every parameter from `NEUTRAL` (your own
+  voice, barely touched) to the voice's own values. Frequencies interpolate
+  geometrically; a linear Hz sweep sounds lopsided.
+- **robot** (0–100%) is a *separate axis* applied on top: kills the glide,
+  crushes harder, drives hotter, forces full wet. "90% Julian but fully
+  robotic" is a valid, reachable state — that is why it is not one blended
+  slider.
+- **volume** feeds master gain, which sits before the limiter.
+
+The fine-tuning panel writes `overrides` on top of the resolved set. Those are
+dropped when the voice or a macro changes, since they would otherwise be
+silently recomputed out from under a slider the user moved. `gateDb` and
+`denoise` are *not* voice-derived and therefore survive voice changes.
 
 ## Latency
 
@@ -108,8 +151,9 @@ he slides between notes, and a hard robotic snap would be Posty, not Julian.
 grain). Bluetooth adds 100–300 ms and is useless for live monitoring — the UI
 says so.
 
-Two monitor modes, chosen before going live (a hard gate — Start is disabled
-until one is picked). **Headphones**: echo cancellation off, the clean path.
+Two monitor modes, chosen in a blocking modal before anything else (the
+transport is disabled until then, and the choice shrinks to a 🎧/🔊 badge in
+the header that can switch it later). **Headphones**: echo cancellation off, the clean path.
 **Speakers**: echo cancellation ON — the browser's AEC uses the page's own
 output as its far-end reference, which is what breaks the voice → speakers →
 mic feedback loop. The AEC may duck or warble the effect (a pitch-shifted copy

@@ -47,7 +47,7 @@ export class HardtuneKernel {
   ratio: number;
   targetRatio: number;
 
-  // -- noise gate --
+  // -- noise gate + room-noise learning --
   gateThreshold: number;
   gateEnv: number;
   gateGain: number;
@@ -56,6 +56,13 @@ export class HardtuneKernel {
   gateEnvRelK: number;
   gateOpenK: number;
   gateCloseK: number;
+  denoise: number;
+  noiseFloor: number;
+  floorUpK: number;
+  floorDownK: number;
+
+  // -- transposition --
+  semitoneShift: number;
 
   // -- warble (pitch LFO) --
   warbleHz: number;
@@ -123,6 +130,16 @@ export class HardtuneKernel {
     this.gateOpenK = 1 - Math.exp(-1 / (0.004 * sampleRate));
     this.gateCloseK = 1 - Math.exp(-1 / (0.12 * sampleRate));
 
+    // Room-noise learning. The floor creeps UP slowly (2 s) and drops fast
+    // (150 ms): a fan that switches on is learned within seconds, but a held
+    // note can never drag the floor up to swallow the voice.
+    this.denoise = 0;
+    this.noiseFloor = 0;
+    this.floorUpK = 1 - Math.exp(-1 / (2 * sampleRate));
+    this.floorDownK = 1 - Math.exp(-1 / (0.15 * sampleRate));
+
+    this.semitoneShift = 0;
+
     // Pitch LFO on the playback ratio - vibrato at small depths, a broken
     // tape warble at large ones.
     this.warbleHz = 0;
@@ -187,6 +204,20 @@ export class HardtuneKernel {
   setWarble(hz: number, cents: number): void {
     this.warbleHz = Math.min(12, Math.max(0, hz));
     this.warbleCents = Math.min(100, Math.max(0, cents));
+  }
+
+  /**
+   * How hard to work at telling the voice from the room. 0 = plain threshold
+   * gate only. Above 0 the gate also learns the room floor and demands
+   * periodicity to open - see the formula in process().
+   */
+  setDenoise(strength: number): void {
+    this.denoise = Math.min(1, Math.max(0, strength));
+  }
+
+  /** Transpose the snapped target, in semitones. Negative = lower voice. */
+  setSemitoneShift(n: number): void {
+    this.semitoneShift = Math.max(-12, Math.min(12, Math.round(n)));
   }
 
   /**
@@ -296,24 +327,55 @@ export class HardtuneKernel {
     let rmsAcc = 0;
 
     for (let i = 0; i < n; i++) {
-      let x = input[i];
+      const x = input[i];
       rmsAcc += x * x;
 
-      // -- noise gate (pre-ring: the detector must not hear the room either) --
-      if (this.gateThreshold > 0) {
-        const a = x < 0 ? -x : x;
-        this.gateEnv += (a - this.gateEnv) * (a > this.gateEnv ? this.gateAttackK : this.gateEnvRelK);
-        if (this.gateOpen) {
-          if (this.gateEnv < this.gateThreshold * 0.5) this.gateOpen = false;
-        } else if (this.gateEnv > this.gateThreshold) {
-          this.gateOpen = true;
-        }
-        this.gateGain += ((this.gateOpen ? 1 : 0) - this.gateGain) * (this.gateOpen ? this.gateOpenK : this.gateCloseK);
-        x *= this.gateGain;
-      }
-
+      // The ring gets the RAW input, and the gate is applied to the output
+      // instead. That ordering is load-bearing: the gate below asks the pitch
+      // detector how periodic the signal is, and the detector reads the ring.
+      // Gate the ring and a shut gate feeds it silence -> clarity 0 -> the
+      // gate can never satisfy its own condition to reopen. Room noise
+      // reaching the detector is harmless, because acquiring a note needs
+      // clarity 0.6 and noise scores far below that.
       ring[this.w & mask] = x;
       this.w++;
+
+      // -- noise gate --
+      //
+      // Two signals decide "voice or room?", because level alone cannot:
+      // a laptop fan and a quiet vowel can sit at the same dB.
+      //
+      //   1. LEVEL vs a learned floor. While the gate is shut, whatever is
+      //      arriving IS the room, so the floor tracks it; the open threshold
+      //      becomes max(user threshold, floor x (1 + 6*denoise)). A noisy
+      //      room raises its own bar without the user touching anything.
+      //   2. PERIODICITY. A voice is periodic and scores high NSDF clarity;
+      //      fans, hiss and traffic are aperiodic and score near zero. The
+      //      detector already computes this, so it costs nothing here.
+      //
+      // Clarity is required to OPEN but never to STAY open - unvoiced
+      // consonants (s, t, k) have almost no periodicity, and demanding it
+      // continuously would bite the front off every word.
+      if (this.gateThreshold > 0 || this.denoise > 0) {
+        const a = x < 0 ? -x : x;
+        this.gateEnv += (a - this.gateEnv) * (a > this.gateEnv ? this.gateAttackK : this.gateEnvRelK);
+
+        if (!this.gateOpen) {
+          this.noiseFloor +=
+            (this.gateEnv - this.noiseFloor) * (this.gateEnv > this.noiseFloor ? this.floorUpK : this.floorDownK);
+        }
+
+        const openAt = Math.max(this.gateThreshold, this.noiseFloor * (1 + 6 * this.denoise));
+        if (this.gateOpen) {
+          if (this.gateEnv < openAt * 0.5) this.gateOpen = false;
+        } else if (this.gateEnv > openAt && this.lastClarity >= 0.45 * this.denoise) {
+          this.gateOpen = true;
+        }
+
+        this.gateGain += ((this.gateOpen ? 1 : 0) - this.gateGain) * (this.gateOpen ? this.gateOpenK : this.gateCloseK);
+      } else {
+        this.gateGain = 1;
+      }
 
       // -- detection cadence --
       if (++this.sinceDetect >= this.detHop) {
@@ -327,7 +389,7 @@ export class HardtuneKernel {
           this.voiced = true;
           this.sinceVoiced = 0;
           const midi = 69 + 12 * (Math.log(this.lastHz / 440) / Math.LN2);
-          const target = this.snapMidi(midi);
+          const target = this.snapMidi(midi) + this.semitoneShift;
           this.lastMidi = midi;
           this.lastTargetMidi = target;
           let r = Math.pow(2, (target - midi) / 12);
@@ -394,7 +456,7 @@ export class HardtuneKernel {
         this.shCount = this.downsampleFactor;
         this.shHeld = Math.round(mixed * quant) / quant;
       }
-      output[i] = this.shHeld;
+      output[i] = this.shHeld * this.gateGain;
     }
 
     this.lastRms = Math.sqrt(rmsAcc / n);
