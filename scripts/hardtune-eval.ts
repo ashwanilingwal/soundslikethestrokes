@@ -1,0 +1,223 @@
+/**
+ * Offline eval for the hardtune kernel. Run with: npx tsx scripts/hardtune-eval.ts
+ *
+ * Feeds the kernel synthetic tones in 128-sample blocks (exactly what the
+ * worklet does) and checks the autotune behaviour numerically - no browser,
+ * no microphone. A second kernel instance is used as the output ANALYSER:
+ * its NSDF detector reads whatever is pushed through it, so pushing the
+ * effect's output through an otherwise-idle kernel gives us an independent
+ * pitch measurement with zero duplicated DSP.
+ */
+
+import { HardtuneKernel } from "../src/lib/dsp/hardtuneKernel";
+import { PROCESSOR_SOURCE } from "../src/lib/audio/graph";
+import { CHROMATIC, majorMask, hzToMidi } from "../src/lib/dsp/scales";
+
+const SR = 48000;
+const BLOCK = 128;
+
+let failures = 0;
+function check(name: string, pass: boolean, detail: string) {
+  console.log(`${pass ? "PASS" : "FAIL"}  ${name}  ${detail}`);
+  if (!pass) failures++;
+}
+
+/** Push a signal through a kernel block by block; returns the full output. */
+function run(kernel: HardtuneKernel, input: Float32Array): Float32Array {
+  const out = new Float32Array(input.length);
+  const inBlock = new Float32Array(BLOCK);
+  const outBlock = new Float32Array(BLOCK);
+  for (let off = 0; off + BLOCK <= input.length; off += BLOCK) {
+    inBlock.set(input.subarray(off, off + BLOCK));
+    kernel.process(inBlock, outBlock);
+    out.set(outBlock, off);
+  }
+  return out;
+}
+
+/** Measure pitch of `signal` every hop using an analyser kernel. */
+function pitchTrack(signal: Float32Array): { at: number; hz: number }[] {
+  const an = new HardtuneKernel(SR);
+  const track: { at: number; hz: number }[] = [];
+  const inBlock = new Float32Array(BLOCK);
+  const outBlock = new Float32Array(BLOCK);
+  for (let off = 0; off + BLOCK <= signal.length; off += BLOCK) {
+    inBlock.set(signal.subarray(off, off + BLOCK));
+    const ran = an.process(inBlock, outBlock);
+    if (ran && an.lastHz > 0 && an.lastClarity >= 0.6) {
+      track.push({ at: off + BLOCK, hz: an.lastHz });
+    }
+  }
+  return track;
+}
+
+function sine(hzAt: (t: number) => number, seconds: number, amp = 0.4): Float32Array {
+  const n = Math.floor(seconds * SR);
+  const buf = new Float32Array(n);
+  let phase = 0;
+  for (let i = 0; i < n; i++) {
+    phase += (2 * Math.PI * hzAt(i / SR)) / SR;
+    buf[i] = amp * Math.sin(phase);
+  }
+  return buf;
+}
+
+// ---------------------------------------------------------------- (a) sweep
+{
+  const kernel = new HardtuneKernel(SR);
+  kernel.setGlide(0);
+  const sweep = sine((t) => 110 * Math.pow(4, t / 5), 5); // 110 -> 440 Hz
+  const out = run(kernel, sweep);
+  const track = pitchTrack(out).filter((p) => p.at > SR * 0.2); // skip warmup
+
+  let onGrid = 0;
+  const centsOff: number[] = [];
+  for (const p of track) {
+    const midi = hzToMidi(p.hz);
+    const cents = Math.abs(midi - Math.round(midi)) * 100;
+    centsOff.push(cents);
+    if (cents <= 25) onGrid++;
+  }
+  const gridPct = track.length ? (100 * onGrid) / track.length : 0;
+  check(
+    "a1 sweep snaps to semitone grid",
+    track.length > 50 && gridPct >= 90,
+    `${track.length} voiced frames, ${gridPct.toFixed(1)}% within 25 cents`,
+  );
+
+  // Stair-stepping: adjacent voiced frames either hold (tiny delta) or jump
+  // (~a semitone). Frames straddling a jump read in between; allow a few.
+  let holdsOrJumps = 0;
+  for (let i = 1; i < track.length; i++) {
+    const delta = Math.abs(hzToMidi(track[i].hz) - hzToMidi(track[i - 1].hz)) * 100;
+    if (delta < 30 || delta > 70) holdsOrJumps++;
+  }
+  const stairPct = track.length > 1 ? (100 * holdsOrJumps) / (track.length - 1) : 0;
+  check("a2 output pitch is stair-stepped", stairPct >= 80, `${stairPct.toFixed(1)}% of deltas are holds or ~semitone jumps`);
+
+  const covered = new Set(track.map((p) => Math.round(hzToMidi(p.hz))));
+  check("a3 sweep covers the two octaves", covered.size >= 18, `${covered.size} distinct semitones (expect ~24)`);
+}
+
+// ------------------------------------------------------- (b) re-snap latency
+{
+  const kernel = new HardtuneKernel(SR);
+  kernel.setGlide(0);
+  const a3 = sine(() => 220, 1);
+  const b3 = sine(() => 246.94, 1);
+  run(kernel, a3);
+  // Feed the new note block by block and watch the snap target directly.
+  const inBlock = new Float32Array(BLOCK);
+  const outBlock = new Float32Array(BLOCK);
+  let snapAt = -1;
+  for (let off = 0; off + BLOCK <= b3.length; off += BLOCK) {
+    inBlock.set(b3.subarray(off, off + BLOCK));
+    kernel.process(inBlock, outBlock);
+    if (kernel.lastTargetMidi === 59) { snapAt = off + BLOCK; break; }
+  }
+  const ms = (snapAt / SR) * 1000;
+  // The detector's 43 ms window has to become dominated by the new tone
+  // before NSDF reads it cleanly, so ~30-60 ms is the honest floor.
+  check("b  220->246.94 Hz re-snaps quickly", snapAt >= 0 && ms <= 64, `snapped to B3 after ${ms.toFixed(1)} ms`);
+}
+
+// ------------------------------------------------------- (c) C-major mask
+{
+  const kernel = new HardtuneKernel(SR);
+  kernel.setGlide(0);
+  kernel.setScaleMask(majorMask(0));
+  const sweep = sine((t) => 110 * Math.pow(4, t / 5), 5);
+  const inBlock = new Float32Array(BLOCK);
+  const outBlock = new Float32Array(BLOCK);
+  const CMAJ = new Set([0, 2, 4, 5, 7, 9, 11]);
+  let targets = 0;
+  let inScale = 0;
+  for (let off = 0; off + BLOCK <= sweep.length; off += BLOCK) {
+    inBlock.set(sweep.subarray(off, off + BLOCK));
+    kernel.process(inBlock, outBlock);
+    if (kernel.voiced && kernel.lastTargetMidi > 0) {
+      targets++;
+      if (CMAJ.has(((kernel.lastTargetMidi % 12) + 12) % 12)) inScale++;
+    }
+  }
+  check("c  C-major mask constrains targets", targets > 100 && inScale === targets, `${inScale}/${targets} snap targets in C major`);
+  kernel.setScaleMask(CHROMATIC);
+}
+
+// ------------------------------------- (d) silence + unvoiced hold-then-relax
+{
+  const kernel = new HardtuneKernel(SR);
+  const silence = new Float32Array(SR);
+  const out = run(kernel, silence);
+  let peak = 0;
+  for (const v of out) peak = Math.max(peak, Math.abs(v));
+  check("d1 silence in, silence out", peak < 1e-4, `abs peak ${peak.toExponential(2)}`);
+
+  const kernel2 = new HardtuneKernel(SR);
+  kernel2.setGlide(0);
+  run(kernel2, sine(() => 220, 1));
+  const voicedBefore = kernel2.voiced && kernel2.lastTargetMidi === 57; // A3
+  run(kernel2, new Float32Array(Math.floor(SR * 0.1))); // 100 ms of silence
+  // The hold is about semantics, not float stability: the snap target must
+  // survive (detections straddling the tone/silence boundary re-derive the
+  // ratio from a fractionally different midi, and that is fine).
+  const heldAt100 = kernel2.voiced && kernel2.lastTargetMidi === 57;
+  run(kernel2, new Float32Array(Math.floor(SR * 0.2))); // total 300 ms
+  const relaxedAt300 = !kernel2.voiced && kernel2.lastTargetMidi === 0 && Math.abs(kernel2.ratio - 1) < 0.01;
+  check(
+    "d2 unvoiced hold-then-relax",
+    voicedBefore && heldAt100 && relaxedAt300,
+    `voiced on tone=${voicedBefore}, target held at 100ms=${heldAt100}, relaxed at 300ms=${relaxedAt300}`,
+  );
+}
+
+// ----------------------------------------------------------- (e) level sanity
+{
+  const kernel = new HardtuneKernel(SR);
+  const tone = sine(() => 233.08, 2); // A#3, 20 cents off nowhere - on-grid input
+  const out = run(kernel, tone);
+  const rms = (b: Float32Array) => Math.sqrt(b.reduce((s, v) => s + v * v, 0) / b.length);
+  const inR = rms(tone.subarray(SR));
+  const outR = rms(out.subarray(SR));
+  check("e  shifter is roughly unity gain", outR > inR * 0.5 && outR < inR * 1.5, `in ${inR.toFixed(3)} out ${outR.toFixed(3)}`);
+}
+
+// ------------------------- (f) worklet source round-trips through eval
+// The browser evaluates PROCESSOR_SOURCE (built from HardtuneKernel.toString())
+// in a scope with no module helpers. Stub the worklet globals and run the
+// exact string; this is what caught esbuild's injected __name helper.
+{
+  type Proc = { process(i: Float32Array[][], o: Float32Array[][], p: Record<string, Float32Array>): boolean };
+  let registered: (new () => Proc) | null = null;
+  const harness = new Function(
+    "AudioWorkletProcessor",
+    "registerProcessor",
+    "sampleRate",
+    PROCESSOR_SOURCE,
+  );
+  class FakeProcessor {
+    port = { onmessage: null as unknown, postMessage: () => {} };
+  }
+  harness(FakeProcessor, (_name: string, cls: new () => Proc) => { registered = cls; }, SR);
+  let ok = false;
+  let detail = "registerProcessor never called";
+  // Indirection because TS can't see the callback assignment above.
+  const RegisteredProc = registered as (new () => Proc) | null;
+  if (RegisteredProc) {
+    const proc = new RegisteredProc();
+    const tone = sine(() => 220, 0.5);
+    const outBlock = new Float32Array(BLOCK);
+    let peak = 0;
+    const params = { dryWet: new Float32Array([1]), retuneGlideMs: new Float32Array([0]) };
+    for (let off = 0; off + BLOCK <= tone.length; off += BLOCK) {
+      proc.process([[tone.subarray(off, off + BLOCK) as Float32Array]], [[outBlock]], params);
+      for (const v of outBlock) peak = Math.max(peak, Math.abs(v));
+    }
+    ok = peak > 0.1;
+    detail = `processor ran, output peak ${peak.toFixed(3)}`;
+  }
+  check("f  worklet source evaluates in a bare scope", ok, detail);
+}
+
+console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) FAILED`);
+process.exit(failures === 0 ? 0 : 1);

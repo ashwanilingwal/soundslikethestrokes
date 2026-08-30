@@ -1,0 +1,62 @@
+/**
+ * The two sounds this app exists for, expressed as parameter sets. Everything
+ * here is also individually reachable from the advanced panel; a preset is
+ * just a starting point, not a mode.
+ */
+
+export interface Preset {
+  id: string;
+  label: string;
+  tagline: string;
+  /** 0 = instant snap (the robotic sound). */
+  retuneGlideMs: number;
+  /** 0 dry .. 1 fully shifted. */
+  dryWet: number;
+  /** tanh drive; 1 is nearly clean, 6 is a blown-out megaphone. */
+  drive: number;
+  /** Bitcrusher: 16 bits + factor 1 = off. */
+  bits: number;
+  downsampleFactor: number;
+  /** Megaphone band-limit. */
+  highpassHz: number;
+  highpassQ: number;
+  lowpassHz: number;
+  masterGain: number;
+}
+
+/**
+ * Heavy saturation through a tight telephone band, with just enough glide
+ * that the tuning reads as a sung line rather than a MIDI file.
+ */
+export const THE_STROKES: Preset = {
+  id: "strokes",
+  label: "The Strokes",
+  tagline: "blown-out megaphone, half-broken PA",
+  retuneGlideMs: 40,
+  dryWet: 1,
+  drive: 6,
+  bits: 10,
+  downsampleFactor: 3,
+  highpassHz: 400,
+  highpassQ: 0.9,
+  lowpassHz: 3200,
+  masterGain: 0.85,
+};
+
+/** Hard chromatic snap, mostly clean signal path - the tune IS the effect. */
+export const POSTY: Preset = {
+  id: "posty",
+  label: "Posty",
+  tagline: "hard autotune, glossy and wide",
+  retuneGlideMs: 0,
+  dryWet: 1,
+  drive: 2,
+  bits: 16,
+  downsampleFactor: 1,
+  highpassHz: 120,
+  highpassQ: 0.7,
+  lowpassHz: 9000,
+  masterGain: 0.9,
+};
+
+export const PRESETS: Preset[] = [THE_STROKES, POSTY];
