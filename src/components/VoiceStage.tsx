@@ -33,7 +33,7 @@ export function VoiceStage() {
           <VinylButton
             status={fx.status}
             message={fx.message}
-            label={fx.voice.label}
+            voice={fx.voice}
             disabled={fx.monitor === null}
             onStart={() => void fx.start()}
             onStop={fx.stop}
@@ -57,10 +57,12 @@ export function VoiceStage() {
           cleanup={fx.cleanup}
           scale={fx.scale}
           hasOverrides={fx.hasOverrides}
+          noiseCancellation={fx.noiseCancellation}
           onOverride={fx.overrideParam}
           onCleanup={fx.setCleanupParam}
           onScale={fx.selectScale}
           onReset={fx.resetOverrides}
+          onNoiseCancellation={fx.toggleNoiseCancellation}
         />
 
         <RecorderBar

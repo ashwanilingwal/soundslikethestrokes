@@ -178,31 +178,50 @@ body {
   );
 }
 
+/* The label carries the selected voice's sleeve art. Text sits above it and
+   takes the art's ink colour, so contrast holds whatever the palette is. */
 .vinyl-label {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  width: 44%;
+  width: 46%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 35%, var(--accent-soft), var(--accent) 68%);
-  color: #1c0505;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  background: var(--label-paper, var(--accent));
+  color: var(--label-ink, #1c0505);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
-.vinyl-label-text { font-weight: 800; font-size: 15px; letter-spacing: 0.1em; }
+.vinyl-label-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.vinyl-label-text {
+  position: relative;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  text-shadow: 0 1px 3px var(--label-paper, transparent);
+}
 .vinyl-label-sub {
+  position: relative;
   max-width: 84%;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-align: center;
-  opacity: 0.72;
+  opacity: 0.85;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-shadow: 0 1px 3px var(--label-paper, transparent);
 }
 
 .vinyl-hole {
@@ -233,26 +252,27 @@ body {
 
 .voice-card-head { display: flex; align-items: center; gap: 7px; }
 
-/* A miniature of the same record, so the cards and the transport agree. */
+/* A miniature of the label this card selects. */
 .voice-card-disc {
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background:
-    repeating-radial-gradient(circle at 50% 50%, rgba(0,0,0,0.9) 0 1px, rgba(255,255,255,0.06) 1px 2px),
-    #14100d;
-  box-shadow: inset 0 0 0 1px rgba(242, 237, 228, 0.14);
-  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(242, 237, 228, 0.18);
 }
-.voice-card-disc::after {
-  content: "";
-  position: absolute;
-  inset: 38%;
-  border-radius: 50%;
-  background: var(--accent);
+
+.voice-tag {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tape);
 }
-.voice-card-on .voice-card-disc::after { background: var(--accent-soft); }
+.voice-card-on .voice-tag { border-color: var(--tape); }
 
 /* --- monitor choice ------------------------------------------------------- */
 

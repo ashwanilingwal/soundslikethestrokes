@@ -99,6 +99,14 @@ Clarity is required to OPEN but never to STAY open — unvoiced consonants
 (s, t, k) have almost no periodicity, and demanding it continuously bites the
 front off every word.
 
+Separately, the **browser's own noise suppressor** (`noiseSuppression` in
+getUserMedia, default on) does the job the gate cannot: it attenuates steady
+noise *underneath* the voice while you speak, where the gate can only silence
+the gaps between words. Toggling it retunes the live track via
+`applyConstraints`; if the browser refuses in place, the hook rebuilds the
+graph. `autoGainControl` stays off regardless — a pumping input destabilises
+both the learned floor and the tuning.
+
 **The ring buffer gets the RAW input and the gate is applied at the OUTPUT.**
 Do not "optimise" this back to gating before the ring: the gate's own
 condition reads clarity, clarity comes from the detector, and the detector
@@ -119,9 +127,28 @@ communicates nothing on its own.
 | Julian I | Is This It · 2001 | Narrow 450–3200 Hz telephone band, hard clipping, driest |
 | Julian II | I'll Try Anything Once · 2006 demo | Warm 180–2600 Hz, keeps the chest, roomy, sung glide |
 | Julian III | The Voidz · 2014→ | 8-bit crush, 5 Hz/55¢ seasick warble, hard snap |
+| Julian · Auto | hard-tuned | Julian II's haze, glide 0, wet locked |
 | Alex I | Whatever People Say I Am · 2006 | Bright, dry, barely coloured; wide 150–7000 Hz |
 | Alex II | AM · 2013 | Smoother, softer top, real room |
 | Alex III | Tranquility Base · 2018 | **−2 semitones**, dark 90–4000 Hz, wettest, least bite |
+| Alex · Auto | hard-tuned | AM smoothness, glide 0, no wobble |
+| Posty I | Stoney · 2016 | Warm/hazy under a hard tune, rounded top |
+| Posty II | Hollywood's Bleeding · 2019 | Cleanest path, brightest, biggest reverb |
+| Posty III | Twelve Carat Toothache · 2022 | Rougher: real saturation + crush behind the tune |
+
+Voices carrying `autotuned: true` **jump `match` to 100% when selected**. At
+the default 70% they would resolve to ~75 ms of glide — a sung slide, which is
+the one thing these voices exist to not be. The slider visibly moves, so
+pulling it back stays obvious. Eval check `l` guards the invariant.
+
+### Label art
+
+Every voice carries an `art` spec (`paper` / `ink` / `motif`) rendered by
+`components/LabelArt.tsx` as inline SVG — on the record's centre label and as
+a miniature on each card. **This is original generated geometry in an
+era-appropriate palette, NOT the real sleeves**, which are copyrighted and are
+deliberately not reproduced anywhere in this app. `ink` doubles as the label's
+text colour, so any new palette must keep text legible on `paper`.
 
 **Julian II is the default.** It targets the First Impressions *demo*, not the
 album cut: warm and hazy, not megaphone-thin — hence the low cut at 180 Hz and

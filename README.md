@@ -5,10 +5,16 @@ band-limited robot — the Post Malone / T-Pain pitch snap crossed with a
 blown-out Strokes megaphone vocal. Everything runs in the browser; no audio
 ever leaves your machine.
 
-Six era-inspired voices — three Julian Casablancas (Is This It, the I'll Try
-Anything Once demo, The Voidz) and three Alex Turner (Whatever People Say I
-Am, AM, Tranquility Base) — each card saying what actually differs from its
-siblings.
+Eleven era-inspired voices across Julian Casablancas (Is This It, the I'll Try
+Anything Once demo, The Voidz), Alex Turner (Whatever People Say I Am, AM,
+Tranquility Base) and Post Malone (Stoney, Hollywood's Bleeding, Twelve Carat
+Toothache) — each card saying what actually differs from its siblings. Five of
+them are hard-tuned "auto" voices that snap every syllable onto the grid,
+including an autotuned take on Julian and on Alex.
+
+Each voice has its own record label art: original generated geometry in an
+era-appropriate palette, shown on the spinning vinyl. These are not the real
+album sleeves, which are copyrighted and aren't reproduced here.
 
 Three controls do the work: **how much** of that voice you want (1% is your
 own, 100% is full character), **robot** for the hard autotuned snap, and
@@ -16,9 +22,11 @@ own, 100% is full character), **robot** for the hard autotuned snap, and
 transpose, warble, room and noise removal — hides behind a fine-tuning panel.
 There's also a record button that captures the processed output.
 
-Room noise is removed by a gate that learns your room's level while you're
-quiet and requires a *periodic* signal to open, so a fan and a quiet vowel at
-the same volume are told apart by periodicity rather than level.
+Background noise gets handled two ways: cancellation (on by default) pulls
+steady noise out from underneath your voice while you speak, and a gate
+silences the gaps between words — it learns your room's level while you're
+quiet and needs a *periodic* signal to open, so a fan and a quiet vowel at the
+same volume are told apart by periodicity rather than level.
 
 ## Running it
 
@@ -46,7 +54,7 @@ so the deployed HTTPS build is the only way to use this off localhost.
 ## Verifying changes
 
 ```bash
-npx tsx scripts/hardtune-eval.ts   # 13 offline DSP checks, no browser needed
+npx tsx scripts/hardtune-eval.ts   # 15 offline DSP checks, no browser needed
 npx tsc --noEmit && npm run lint && npm run build
 ```
 

@@ -65,6 +65,11 @@ export interface VoiceGraph {
   setParams(params: Partial<AdvancedParams>): void;
   setScaleMask(mask: number[]): void;
   onTelemetry(cb: ((t: Telemetry) => void) | null): void;
+  /**
+   * Retune the live capture track's noise suppression. Resolves false when
+   * the browser won't change it in place, so the caller can restart instead.
+   */
+  setNoiseCancellation(on: boolean): Promise<boolean>;
   stop(): void;
 }
 
@@ -372,7 +377,22 @@ export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): Ef
 
 export type MonitorMode = "headphones" | "speakers";
 
-export async function startVoiceGraph(initial: AdvancedParams, monitor: MonitorMode = "headphones"): Promise<VoiceGraph> {
+export interface CaptureOptions {
+  monitor: MonitorMode;
+  /**
+   * The browser's own noise suppressor (WebRTC). Genuinely different from the
+   * kernel's gate: this attenuates steady background noise *underneath* your
+   * voice while you speak, where the gate can only silence the space between
+   * words. It is tuned for speech, which is exactly our signal - the reason
+   * StrumLab keeps it off is that it eats sustained guitar notes.
+   */
+  noiseCancellation: boolean;
+}
+
+export async function startVoiceGraph(
+  initial: AdvancedParams,
+  capture: CaptureOptions = { monitor: "headphones", noiseCancellation: true },
+): Promise<VoiceGraph> {
   if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
     throw new MicError("insecure", "The browser won't share a microphone here. This needs https, or localhost.");
   }
@@ -384,8 +404,10 @@ export async function startVoiceGraph(initial: AdvancedParams, monitor: MonitorM
     stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         // AEC only in speaker mode - see the header comment.
-        echoCancellation: monitor === "speakers",
-        noiseSuppression: false,
+        echoCancellation: capture.monitor === "speakers",
+        noiseSuppression: capture.noiseCancellation,
+        // Stays off regardless: AGC pumps the level, and a pumping input
+        // makes both the gate's learned floor and the tuning unstable.
         autoGainControl: false,
         channelCount: 1,
       },
@@ -416,6 +438,22 @@ export async function startVoiceGraph(initial: AdvancedParams, monitor: MonitorM
     setParams: chain.setParams,
     setScaleMask: chain.setScaleMask,
     onTelemetry: chain.onTelemetry,
+    async setNoiseCancellation(on: boolean) {
+      const track = stream.getAudioTracks()[0];
+      if (!track) return false;
+      try {
+        // Changing it in place avoids a dropout. Not every browser allows
+        // this on a live track, hence the boolean rather than a throw.
+        await track.applyConstraints({
+          echoCancellation: capture.monitor === "speakers",
+          noiseSuppression: on,
+          autoGainControl: false,
+        });
+        return track.getSettings().noiseSuppression === on;
+      } catch {
+        return false;
+      }
+    },
     stop() {
       try {
         source.disconnect();

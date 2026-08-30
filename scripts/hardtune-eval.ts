@@ -11,6 +11,7 @@
 
 import { HardtuneKernel } from "../src/lib/dsp/hardtuneKernel";
 import { PROCESSOR_SOURCE } from "../src/lib/audio/graph";
+import { resolveParams, VOICES } from "../src/lib/audio/voices";
 import { CHROMATIC, majorMask, hzToMidi } from "../src/lib/dsp/scales";
 
 const SR = 48000;
@@ -268,6 +269,56 @@ function sine(hzAt: (t: number) => number, seconds: number, amp = 0.4): Float32A
     "j  same level, only the voice gets through",
     noiseRms < toneRms * 0.05 && toneRms > 0.01,
     `aperiodic ${noiseRms.toExponential(2)} vs periodic ${toneRms.toExponential(2)} at identical amplitude`,
+  );
+}
+
+// ------------------ (k) every voice resolves to values the graph can accept
+// Cheap insurance against a typo in a new voice entry: a NaN or an
+// out-of-range value here would silently mute or blow up the chain.
+{
+  const RANGES: Record<string, [number, number]> = {
+    retuneGlideMs: [0, 400],
+    dryWet: [0, 1],
+    drive: [1, 40],
+    bits: [4, 16],
+    downsampleFactor: [1, 16],
+    highpassHz: [40, 2000],
+    highpassQ: [0.1, 4],
+    lowpassHz: [800, 20000],
+    presenceDb: [-6, 18],
+    warbleHz: [0, 12],
+    warbleCents: [0, 100],
+    roomMix: [0, 1],
+    semitoneShift: [-12, 12],
+  };
+  const problems: string[] = [];
+  for (const voice of VOICES) {
+    for (const match of [0, 0.5, 1]) {
+      for (const robot of [0, 1]) {
+        const p = resolveParams(voice, { match, robot, volume: 1, gateDb: -50, denoise: 0.7 }) as unknown as Record<string, number>;
+        for (const [key, [lo, hi]] of Object.entries(RANGES)) {
+          const v = p[key];
+          if (!Number.isFinite(v) || v < lo || v > hi) {
+            problems.push(`${voice.id} m=${match} r=${robot}: ${key}=${v}`);
+          }
+        }
+      }
+    }
+  }
+  check("k  all voices resolve in range", problems.length === 0, `${VOICES.length} voices x 6 macro combos${problems.length ? " -> " + problems.slice(0, 3).join("; ") : ""}`);
+}
+
+// ------------------------ (l) the autotuned voices really are hard-snapped
+{
+  const auto = VOICES.filter((v) => v.autotuned);
+  const bad = auto.filter((v) => {
+    const p = resolveParams(v, { match: 1, robot: 0, volume: 1, gateDb: -50, denoise: 0.7 });
+    return p.retuneGlideMs > 0.001 || p.dryWet < 0.999;
+  });
+  check(
+    "l  autotuned voices snap with zero glide",
+    auto.length >= 5 && bad.length === 0,
+    `${auto.length} tagged auto (${auto.map((v) => v.label).join(", ")})${bad.length ? `; failing: ${bad.map((v) => v.id).join(",")}` : ""}`,
   );
 }
 

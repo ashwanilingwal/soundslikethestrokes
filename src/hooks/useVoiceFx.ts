@@ -39,6 +39,7 @@ export function useVoiceFx() {
   const [scale, setScale] = useState<ScaleChoice>({ kind: "chromatic" });
   /** null until the user has actively picked one - it doubles as the gate. */
   const [monitor, setMonitor] = useState<MonitorMode | null>(null);
+  const [noiseCancellation, setNoiseCancellation] = useState(true);
   const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
   const [taps, setTaps] = useState<{ analyser: AnalyserNode; recorderStream: MediaStream } | null>(null);
 
@@ -52,6 +53,7 @@ export function useVoiceFx() {
   const paramsRef = useRef(params);
   const scaleRef = useRef(scale);
   const monitorRef = useRef<MonitorMode | null>(null);
+  const ncRef = useRef(true);
 
   // Push every recomputed parameter set at the running graph, and keep the
   // ref start() reads in sync. Cheap: the graph ramps continuous values and
@@ -75,7 +77,10 @@ export function useVoiceFx() {
     setMessage(null);
     setStatus("opening");
     try {
-      const graph = await startVoiceGraph(paramsRef.current, monitorRef.current ?? "headphones");
+      const graph = await startVoiceGraph(paramsRef.current, {
+        monitor: monitorRef.current ?? "headphones",
+        noiseCancellation: ncRef.current,
+      });
       graph.setScaleMask(maskFor(scaleRef.current));
       graph.onTelemetry(setTelemetry);
       graphRef.current = graph;
@@ -92,6 +97,12 @@ export function useVoiceFx() {
   const selectVoice = useCallback((next: Voice) => {
     setVoice(next);
     setOverrides({});
+    // A voice labelled "auto" has to actually sound auto the moment it is
+    // picked. At the default 70% match it would resolve to ~75 ms of glide,
+    // which is a sung slide, not a snap - the one thing these voices exist
+    // for. Jump match to full; the slider visibly moves, so pulling it back
+    // is still obvious and available.
+    if (next.autotuned) setMacros((prev) => ({ ...prev, match: 1 }));
   }, []);
 
   const setMacro = useCallback((patch: Partial<typeof DEFAULT_MACROS>) => {
@@ -115,6 +126,24 @@ export function useVoiceFx() {
     setScale(next);
     graphRef.current?.setScaleMask(maskFor(next));
   }, []);
+
+  const toggleNoiseCancellation = useCallback(
+    (on: boolean) => {
+      ncRef.current = on;
+      setNoiseCancellation(on);
+      const graph = graphRef.current;
+      if (!graph) return;
+      // Prefer retuning the live track; only rebuild if the browser refuses,
+      // since a restart costs a visible dropout and re-prompts nothing.
+      void graph.setNoiseCancellation(on).then((ok) => {
+        if (!ok && graphRef.current) {
+          stop();
+          void start();
+        }
+      });
+    },
+    [start, stop],
+  );
 
   const selectMonitor = useCallback(
     (next: MonitorMode) => {
@@ -142,6 +171,7 @@ export function useVoiceFx() {
     hasOverrides: Object.keys(overrides).length > 0,
     scale,
     monitor,
+    noiseCancellation,
     telemetry,
     /** null while the graph is down; components must handle both. */
     analyser: taps?.analyser ?? null,
@@ -155,5 +185,6 @@ export function useVoiceFx() {
     resetOverrides,
     selectScale,
     selectMonitor,
+    toggleNoiseCancellation,
   };
 }

@@ -51,19 +51,23 @@ export function AdvancedPanel({
   cleanup,
   scale,
   hasOverrides,
+  noiseCancellation,
   onOverride,
   onCleanup,
   onScale,
   onReset,
+  onNoiseCancellation,
 }: {
   params: AdvancedParams;
   cleanup: { gateDb: number; denoise: number };
   scale: ScaleChoice;
   hasOverrides: boolean;
+  noiseCancellation: boolean;
   onOverride: (patch: Partial<VoiceParams>) => void;
   onCleanup: (patch: Partial<{ gateDb: number; denoise: number }>) => void;
   onScale: (choice: ScaleChoice) => void;
   onReset: () => void;
+  onNoiseCancellation: (on: boolean) => void;
 }) {
   const scaleValue = scale.kind === "chromatic" ? "chromatic" : `${scale.kind}:${scale.root}`;
 
@@ -74,6 +78,22 @@ export function AdvancedPanel({
       <div className="mt-4 flex flex-col gap-5">
         <section className="flex flex-col gap-3">
           <h3 className="caps text-accent-soft">clean-up</h3>
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={noiseCancellation}
+              onChange={(e) => onNoiseCancellation(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-[var(--accent)]"
+            />
+            <span className="text-xs">
+              <span className="font-semibold text-fg">Background noise cancellation</span>
+              <span className="mt-0.5 block leading-snug text-fg-dim">
+                The browser&apos;s own suppressor, applied at the microphone. This pulls steady noise — fans, traffic,
+                hum — out from <em>underneath</em> your voice while you speak. The gate below can only silence the gaps
+                between words, so the two do different jobs.
+              </span>
+            </span>
+          </label>
           <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
             <Slider
               label="room-noise removal"
