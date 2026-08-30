@@ -5,6 +5,7 @@ import {
   MicError,
   startVoiceGraph,
   type AdvancedParams,
+  type MonitorMode,
   type Telemetry,
   type VoiceGraph,
 } from "@/lib/audio/graph";
@@ -38,6 +39,8 @@ export function useVoiceFx() {
   const [preset, setPreset] = useState<Preset>(THE_STROKES);
   const [params, setParams] = useState<AdvancedParams>(paramsFrom(THE_STROKES));
   const [scale, setScale] = useState<ScaleChoice>({ kind: "chromatic" });
+  /** null until the user has actively picked one - it doubles as the gate. */
+  const [monitor, setMonitor] = useState<MonitorMode | null>(null);
   const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
   // Mirrored into state (not read off the ref) so renders see them appear.
   const [taps, setTaps] = useState<{ analyser: AnalyserNode; recorderStream: MediaStream } | null>(null);
@@ -46,6 +49,7 @@ export function useVoiceFx() {
   // Live-selected values, readable from the async start() without staleness.
   const presetRef = useRef(preset);
   const scaleRef = useRef(scale);
+  const monitorRef = useRef<MonitorMode | null>(null);
 
   const stop = useCallback(() => {
     graphRef.current?.stop();
@@ -61,7 +65,7 @@ export function useVoiceFx() {
     setMessage(null);
     setStatus("opening");
     try {
-      const graph = await startVoiceGraph(presetRef.current);
+      const graph = await startVoiceGraph(presetRef.current, monitorRef.current ?? "headphones");
       graph.setScaleMask(maskFor(scaleRef.current));
       graph.onTelemetry(setTelemetry);
       graphRef.current = graph;
@@ -93,6 +97,20 @@ export function useVoiceFx() {
     graphRef.current?.setScaleMask(maskFor(next));
   }, []);
 
+  const selectMonitor = useCallback(
+    (next: MonitorMode) => {
+      monitorRef.current = next;
+      setMonitor(next);
+      // Echo cancellation is a getUserMedia constraint, so a live graph has
+      // to be rebuilt - a brief dropout beats making the choice sticky.
+      if (graphRef.current) {
+        stop();
+        void start();
+      }
+    },
+    [start, stop],
+  );
+
   useEffect(() => () => graphRef.current?.stop(), []);
 
   return {
@@ -101,6 +119,7 @@ export function useVoiceFx() {
     preset,
     params,
     scale,
+    monitor,
     telemetry,
     /** null while the graph is down; components must handle both. */
     analyser: taps?.analyser ?? null,
@@ -110,5 +129,6 @@ export function useVoiceFx() {
     selectPreset,
     updateParams,
     selectScale,
+    selectMonitor,
   };
 }

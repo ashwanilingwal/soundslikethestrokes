@@ -31,7 +31,7 @@ export function MicButton({
       {status === "error" && message ? (
         <p className="max-w-xs text-center text-sm text-accent-soft">{message}</p>
       ) : (
-        <p className="caps text-fg-dim">{live ? "on air" : opening ? "opening mic" : disabled ? "tick the headphone box first" : "mic off"}</p>
+        <p className="caps text-fg-dim">{live ? "on air" : opening ? "opening mic" : disabled ? "pick headphones or speakers first" : "mic off"}</p>
       )}
     </div>
   );

@@ -19,13 +19,14 @@ processed output for download.
 
 | Route | What |
 |---|---|
-| `/` | The stage: headphone gate, go-live button, pitch readout, presets, knobs, recorder |
+| `/` | The stage: monitor-mode picker, go-live button, pitch readout, presets, knobs, recorder |
 | `/soundcheck` | Hidden diagnostics: drives the chain with an oscillator (no mic), prints PASS/FAIL lines |
 
 ## Signal chain
 
 ```
-getUserMedia (echoCancellation/noiseSuppression/autoGainControl all OFF, mono)
+getUserMedia (noiseSuppression/autoGainControl OFF, mono;
+              echoCancellation OFF in headphones mode, ON in speaker mode)
   → MediaStreamSource
   → AudioWorkletNode "hardtune"   [NSDF pitch detect + semitone snap + grain shifter + dry/wet + bitcrush]
   → WaveShaper                    [tanh(drive·x)/tanh(drive), 4x oversample]
@@ -84,8 +85,16 @@ fallback is to ship the compiled kernel as `public/hardtune-worklet.js` and
 
 ≈35–60 ms end-to-end on wired headphones (hardware IO + render quanta + half a
 grain). Bluetooth adds 100–300 ms and is useless for live monitoring — the UI
-says so. Echo cancellation is off by design, so the headphone checkbox is a hard
-gate, not decoration.
+says so.
+
+Two monitor modes, chosen before going live (a hard gate — Start is disabled
+until one is picked). **Headphones**: echo cancellation off, the clean path.
+**Speakers**: echo cancellation ON — the browser's AEC uses the page's own
+output as its far-end reference, which is what breaks the voice → speakers →
+mic feedback loop. The AEC may duck or warble the effect (a pitch-shifted copy
+of the mic is exactly the correlated signal it exists to remove), so speakers
+are the workable mode, headphones the good one. Switching modes while live
+rebuilds the graph (AEC is a getUserMedia constraint).
 
 ## Verifying changes
 

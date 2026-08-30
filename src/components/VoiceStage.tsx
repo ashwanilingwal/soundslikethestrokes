@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { useRecorder } from "@/hooks/useRecorder";
 import { useVoiceFx } from "@/hooks/useVoiceFx";
 import { AdvancedPanel } from "./AdvancedPanel";
-import { HeadphoneWarning } from "./HeadphoneWarning";
 import { MicButton } from "./MicButton";
+import { MonitorPicker } from "./MonitorPicker";
 import { PitchReadout } from "./PitchReadout";
 import { PresetCards } from "./PresetCards";
 import { RecorderBar } from "./RecorderBar";
@@ -13,7 +12,6 @@ import { RecorderBar } from "./RecorderBar";
 export function VoiceStage() {
   const fx = useVoiceFx();
   const recorder = useRecorder(fx.recorderStream);
-  const [headphonesOk, setHeadphonesOk] = useState(false);
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-col gap-5 px-4 py-10">
@@ -25,13 +23,13 @@ export function VoiceStage() {
         </p>
       </header>
 
-      <HeadphoneWarning checked={headphonesOk} onChange={setHeadphonesOk} />
+      <MonitorPicker value={fx.monitor} onChange={fx.selectMonitor} />
 
       <div className="flex justify-center py-2">
         <MicButton
           status={fx.status}
           message={fx.message}
-          disabled={!headphonesOk && fx.status !== "live"}
+          disabled={fx.monitor === null && fx.status !== "live"}
           onStart={() => void fx.start()}
           onStop={fx.stop}
         />

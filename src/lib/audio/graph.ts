@@ -17,9 +17,16 @@
  * public/hardtune-worklet.js and addModule() that instead.
  *
  * Mic constraints are copied from StrumLab: every browser "enhancement" is
- * switched off. Echo cancellation in particular would try to subtract the
- * monitored output from the input and audibly duck the voice - which is also
- * why the UI insists on headphones before starting.
+ * switched off - in headphones mode. Echo cancellation would try to subtract
+ * the monitored output from the input and can audibly duck the voice.
+ *
+ * Speaker mode flips exactly one of them back ON: with open speakers the
+ * loop voice -> speakers -> mic -> effect -> speakers howls within a second,
+ * and the browser's AEC (which uses the page's own output as its far-end
+ * reference) is what breaks that loop. The trade-off is real - the AEC may
+ * warble or duck the robot voice, since a pitch-shifted copy of the mic is
+ * precisely the kind of correlated signal it exists to remove - so the UI
+ * sells headphones as the good mode and speakers as the workable one.
  */
 
 import { HardtuneKernel } from "@/lib/dsp/hardtuneKernel";
@@ -283,7 +290,9 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
   };
 }
 
-export async function startVoiceGraph(preset: Preset): Promise<VoiceGraph> {
+export type MonitorMode = "headphones" | "speakers";
+
+export async function startVoiceGraph(preset: Preset, monitor: MonitorMode = "headphones"): Promise<VoiceGraph> {
   if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
     throw new MicError("insecure", "The browser won't share a microphone here. This needs https, or localhost.");
   }
@@ -294,7 +303,8 @@ export async function startVoiceGraph(preset: Preset): Promise<VoiceGraph> {
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       audio: {
-        echoCancellation: false,
+        // AEC only in speaker mode - see the header comment.
+        echoCancellation: monitor === "speakers",
         noiseSuppression: false,
         autoGainControl: false,
         channelCount: 1,
