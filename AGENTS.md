@@ -145,21 +145,44 @@ pulling it back stays obvious. Eval check `l` guards the invariant.
 
 ### The two-step picker
 
-`components/VoicePicker.tsx` is two selects on one row: category, then who.
+`components/VoicePicker.tsx` is two rows of buttons, not two dropdowns: what
+you can pick is visible without opening anything, which is the point of a
+shelf of records. Row one is the bucket, row two is what is in it.
 
-| Category | Step two lists | Why |
+| Category | Row two lists | Why |
 |---|---|---|
-| **Autotune** | singer names | "I want the robot voice" is a different question from "I want that record's sound" |
+| **Autotune** (default) | singer names | "I want the robot voice" is a different question from "I want that record's sound" |
 | The Strokes | Julian's eras | |
 | AM | Alex Turner's eras | |
 | PM | Post Malone's eras | |
 
-Autotune leads because it is the headline feature. Three invariants the UI
-depends on, all guarded by eval check `m`: no category is empty, the `auto`
-category holds **exactly one** voice per singer (step two shows names there,
-so two entries for one singer would be ambiguous), and `voiceForCategory()`
-always returns a voice — it keeps the current singer where the target
-category has one, so Julian II → Autotune lands on Julian, not Alex.
+Autotune leads and is where you land, because it is the headline feature.
+Three invariants the UI depends on, all guarded by eval check `m`: no category
+is empty, the `auto` category holds **exactly one** voice per singer (row two
+shows names there, so two entries for one singer would be ambiguous), and
+`voiceForCategory()` always returns a voice — it keeps the current singer
+where the target category has one, so Julian II -> Autotune lands on Julian.
+
+Button faces come from `shortLabel()` / `yearLabel()`, derived from `era`
+rather than stored, so there is no second set of names to keep in sync.
+
+### Look: a late-90s desktop
+
+Inspired by thestrokes.com, which is a Windows-95 pastiche — electric blue
+ground, silver bevelled windows, bitmap type. The *language* is borrowed, not
+the assets: no artwork is copied, and their fonts are proprietary so we use
+open-licensed Google faces (Silkscreen for the pixel display/UI, VT323 for
+readouts). Space Grotesk survives for descriptive prose only — a pixel face is
+the whole look, but a paragraph set in one is a paragraph nobody reads.
+
+The bevel is the trick, and it is why nothing here has a border-radius: a
+raised control is light on top/left and dark on bottom/right, and pressed
+swaps them. `.win` is raised, `.sunk` is inverted, `.seg-on` renders a
+selected toggle as pressed *in*.
+
+The whole stage is ONE window rather than a stack of floating cards: chrome
+costs vertical space, and one titlebar is affordable where six are not — the
+one-screen rule still governs.
 
 ### Label art
 

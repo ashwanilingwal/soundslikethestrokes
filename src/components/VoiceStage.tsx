@@ -29,14 +29,24 @@ export function VoiceStage() {
       {fx.monitor === null && <MonitorModal onChoose={fx.selectMonitor} />}
 
       <main className="stage">
-        <header className="flex items-center gap-2">
-          <h1 className="stage-title wordmark min-w-0 flex-1 truncate text-[clamp(1.05rem,4.6vw,1.9rem)]">
-            soundslikethestrokes
-          </h1>
-          {fx.monitor && <MonitorBadge value={fx.monitor} onChange={fx.selectMonitor} />}
-        </header>
+        <div className="win stage-window">
+          <div className="win-title">
+            <span>soundslikethestrokes.exe</span>
+            <span className="win-dots" aria-hidden>
+              <span className="win-dot">_</span>
+              <span className="win-dot">□</span>
+              <span className="win-dot">×</span>
+            </span>
+          </div>
 
-        <div className="stage-grid">
+          <header className="flex items-center gap-2 px-1">
+            <h1 className="stage-title wordmark min-w-0 flex-1 truncate text-[clamp(0.85rem,3.6vw,1.4rem)]">
+              soundslikethestrokes
+            </h1>
+            {fx.monitor && <MonitorBadge value={fx.monitor} onChange={fx.selectMonitor} />}
+          </header>
+
+          <div className="stage-grid">
           <section className="flex flex-col items-center gap-2">
             <VinylButton
               status={fx.status}
@@ -67,25 +77,28 @@ export function VoiceStage() {
               onStop={recorder.stop}
             />
           </section>
-        </div>
+          </div>
 
-        <AdvancedPanel
-          params={fx.params}
-          cleanup={fx.cleanup}
-          scale={fx.scale}
-          hasOverrides={fx.hasOverrides}
-          noiseCancellation={fx.noiseCancellation}
-          onOverride={fx.overrideParam}
-          onCleanup={fx.setCleanupParam}
-          onScale={fx.selectScale}
-          onReset={fx.resetOverrides}
-          onNoiseCancellation={fx.toggleNoiseCancellation}
-        />
+          <AdvancedPanel
+            params={fx.params}
+            cleanup={fx.cleanup}
+            scale={fx.scale}
+            hasOverrides={fx.hasOverrides}
+            noiseCancellation={fx.noiseCancellation}
+            onOverride={fx.overrideParam}
+            onCleanup={fx.setCleanupParam}
+            onScale={fx.selectScale}
+            onReset={fx.resetOverrides}
+            onNoiseCancellation={fx.toggleNoiseCancellation}
+          />
+        </div>
 
         {/* Below the fold by design — see AdSlot. */}
         <AdSlot />
 
-        <footer className="stage-footer text-center text-[10px] leading-tight text-fg-dim">
+        {/* Outside the window, sitting on the desktop — so it takes the
+            light-on-blue treatment rather than the window's dark ink. */}
+        <footer className="stage-footer text-center text-[10px] leading-tight text-white/60">
           Runs entirely in your browser. Era-inspired voice characters and original label art — not clones, not the real
           sleeves.
           {consent.trackingConfigured && consent.consent !== "unknown" && (

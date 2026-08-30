@@ -1,17 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, Rubik_Glitch, Space_Grotesk } from "next/font/google";
+import { Silkscreen, Space_Grotesk, VT323 } from "next/font/google";
 import { ConsentProvider } from "@/components/ConsentProvider";
 import { ADSENSE_CLIENT, adsEnabled } from "@/lib/ads";
 import "./globals.css";
 
 /**
- * Rubik Glitch is the wordmark only - type that looks like a dropped sample.
- * Space Grotesk carries everything else, and IBM Plex Mono the note/level
- * readouts, where tabular figures stop the numbers jittering.
+ * A late-90s desktop, in type. Silkscreen is the bitmap face for the
+ * wordmark, window titles and buttons; VT323 is the CRT terminal font for
+ * numbers and readouts. Both are open-licensed from Google Fonts - the
+ * fonts the reference site uses are proprietary and are not copied here.
+ *
+ * Space Grotesk survives for descriptive prose only: pixel faces are the
+ * whole look, but a paragraph set in one is a paragraph nobody reads.
  */
-const glitch = Rubik_Glitch({ variable: "--font-glitch", subsets: ["latin"], weight: "400" });
+const pixel = Silkscreen({ variable: "--font-pixel", subsets: ["latin"], weight: ["400", "700"] });
+const term = VT323({ variable: "--font-term", subsets: ["latin"], weight: "400" });
 const grotesk = Space_Grotesk({ variable: "--font-grotesk", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
-const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"], weight: ["400", "600"] });
 
 export const metadata: Metadata = {
   title: "soundslikethestrokes",
@@ -35,7 +39,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${glitch.variable} ${grotesk.variable} ${plexMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${pixel.variable} ${term.variable} ${grotesk.variable} h-full antialiased`}>
       <body className="min-h-full grain">
         {/* Every third-party tag now lives inside the provider - a script
             rendered here, in a server layout, would be in the HTML before any

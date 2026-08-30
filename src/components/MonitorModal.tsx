@@ -25,17 +25,24 @@ export function MonitorModal({ onChoose }: { onChoose: (m: MonitorMode) => void 
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="monitor-title">
-      <div className="modal-card grain">
-        <p className="caps text-accent-soft">before we start</p>
-        <h2 id="monitor-title" className="mt-2 text-2xl font-bold">
-          How are you listening?
-        </h2>
-        <p className="mt-2 text-sm text-fg-muted">
-          Your voice is monitored straight back at you, so this changes how the mic is opened — it can&apos;t be
-          switched silently later.
-        </p>
+      <div className="modal-card">
+        <div className="win-title">
+          <span>setup.exe</span>
+          <span className="win-dots" aria-hidden>
+            <span className="win-dot">×</span>
+          </span>
+        </div>
+        <div className="modal-body">
+          <p className="caps">before we start</p>
+          <h2 id="monitor-title" className="wordmark mt-1.5 text-lg">
+            How are you listening?
+          </h2>
+          <p className="mt-2 text-sm text-fg-muted">
+            Your voice is monitored straight back at you, so this changes how the mic is opened — it can&apos;t be
+            switched silently later.
+          </p>
 
-        <div className="mt-5 flex flex-col gap-3">
+          <div className="mt-4 flex flex-col gap-2.5">
           <button ref={firstRef} type="button" className="monitor-choice" onClick={() => onChoose("headphones")}>
             <span className="monitor-choice-icon" aria-hidden>
               🎧
@@ -61,6 +68,7 @@ export function MonitorModal({ onChoose }: { onChoose: (m: MonitorMode) => void 
               </span>
             </span>
           </button>
+          </div>
         </div>
       </div>
     </div>

@@ -412,7 +412,8 @@ export const ARTISTS = [
   { id: "posty" as const, name: "Post Malone", band: "full autotune, by design" },
 ];
 
-export const DEFAULT_VOICE = VOICES[1]; // Julian II — the one that started this
+/** Autotune is the headline feature, so it is also where you land. */
+export const DEFAULT_VOICE = VOICES.find((v) => v.id === "julian-auto") ?? VOICES[0];
 
 /**
  * The first of the two picker steps. Autotune leads: it is the headline
@@ -441,6 +442,19 @@ export function artistName(artist: Voice["artist"]): string {
  */
 export function optionLabel(voice: Voice): string {
   return voice.category === "auto" ? artistName(voice.artist) : voice.era;
+}
+
+/**
+ * Button face: the album or the singer, without the year. Derived from `era`
+ * rather than stored, so there is no second name to keep in sync.
+ */
+export function shortLabel(voice: Voice): string {
+  return voice.category === "auto" ? artistName(voice.artist) : voice.era.split(" · ")[0];
+}
+
+/** The small print under a button: the year, or "auto". */
+export function yearLabel(voice: Voice): string {
+  return voice.category === "auto" ? "auto" : (voice.era.split(" · ")[1] ?? "");
 }
 
 /**
