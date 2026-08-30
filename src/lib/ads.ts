@@ -14,8 +14,16 @@
 export const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT?.trim() || "";
 export const ADSENSE_SLOT = process.env.NEXT_PUBLIC_ADSENSE_SLOT?.trim() || "";
 
-/** True only when a publisher id is configured. */
+/**
+ * Publisher id alone is enough to verify a site and load the script. This is
+ * deliberately the weaker condition, because AdSense will not let you create
+ * an ad unit (and therefore hand you a slot id) until the site is approved -
+ * so "client set, slot still empty" is the normal state for days.
+ */
 export const adsEnabled = ADSENSE_CLIENT.startsWith("ca-pub-");
+
+/** An actual ad unit needs a slot too; without one the <ins> can never fill. */
+export const adSlotReady = adsEnabled && /^\d{6,}$/.test(ADSENSE_SLOT);
 
 /** The bare publisher number, as ads.txt wants it (no "ca-" prefix). */
 export function publisherId(): string {

@@ -16,6 +16,16 @@ const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"
 export const metadata: Metadata = {
   title: "soundslikethestrokes",
   description: "Speak into the mic, hear a hard-autotuned, blown-out megaphone version of yourself. Live.",
+  /**
+   * AdSense site verification, meta-tag method.
+   *
+   * This is the reliable one for an app like this: it lands in the
+   * server-rendered <head>, so the crawler sees it in the raw HTML without
+   * executing any JavaScript. The serving snippet in <body> is injected by
+   * the Next runtime after hydration, which a crawler may never observe -
+   * verifying on that alone is a coin flip.
+   */
+  ...(adsEnabled ? { other: { "google-adsense-account": ADSENSE_CLIENT } } : {}),
 };
 
 export const viewport: Viewport = {
