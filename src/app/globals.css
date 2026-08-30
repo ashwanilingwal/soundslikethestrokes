@@ -124,9 +124,79 @@ body {
    highlight stays put and the record moves under it, which is what selling
    the rotation actually depends on. */
 
+/* --- one-screen stage ------------------------------------------------------
+   Deck and controls sit side by side once there is width, and stack on a
+   phone. Sizes are viewport-relative so the whole thing compresses instead of
+   scrolling; only the fine-tuning panel can push past one screen. */
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 980px;
+  margin-inline: auto;
+  padding: 10px 12px 12px;
+  min-height: 100dvh;
+}
+
+.stage-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+@media (min-width: 760px) {
+  .stage { gap: 10px; padding: 14px 16px 16px; }
+  .stage-grid { grid-template-columns: minmax(190px, 34%) 1fr; gap: 18px; align-items: center; }
+}
+
+/* Short viewports (an SE-sized phone, or a laptop with browser chrome eating
+   the height) get a smaller record and tighter gaps rather than a scrollbar. */
+@media (max-height: 720px) {
+  .stage { gap: 5px; padding: 6px 12px 8px; }
+  .stage-grid { gap: 7px; }
+  .vinyl-btn { width: clamp(96px, 25vw, 132px); }
+  .card { padding-block: 5px; }
+}
+
+@media (max-height: 660px) {
+  .stage { gap: 4px; padding-top: 4px; }
+  .vinyl-btn { width: clamp(84px, 22vw, 112px); }
+  /* The voice description is the cheapest thing to trim: informative, but
+     not needed to operate anything. */
+  .voice-varies {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* Genuinely tiny (an SE-class phone in portrait). The footer's disclaimer
+   also lives in the README and AGENTS.md, so dropping it here loses nothing
+   operational. */
+@media (max-height: 620px) {
+  .stage-footer { display: none; }
+  .voice-varies { -webkit-line-clamp: 1; }
+  .vinyl-btn { width: clamp(72px, 20vw, 96px); }
+  .stage { gap: 3px; }
+  /* Shorter slider rows. The thumb stays 13px, which is still a usable touch
+     target once the whole row is a tap zone. */
+  input[type="range"] { height: 15px; }
+  input[type="range"]::-webkit-slider-thumb { width: 13px; height: 13px; margin-top: -4.5px; }
+  input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; }
+  .chip { padding: 1px 7px; font-size: 10px; }
+  .macro-card { gap: 3px; padding-block: 4px; }
+  .stage-title { font-size: 0.95rem; }
+}
+
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+
 .vinyl-btn {
   position: relative;
-  width: clamp(180px, 46vw, 216px);
+  width: clamp(132px, 34vw, 210px);
   aspect-ratio: 1;
   border: none;
   border-radius: 50%;
@@ -147,15 +217,35 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background:
-    repeating-radial-gradient(circle at 50% 50%,
-      rgba(0, 0, 0, 0.85) 0 1px,
-      rgba(255, 255, 255, 0.035) 1px 2px,
-      rgba(0, 0, 0, 0.85) 2px 4px),
-    radial-gradient(circle at 50% 50%, #1b1714 0%, #0b0908 70%);
+  overflow: hidden;
+  background: var(--label-paper, #0b0908);
   box-shadow:
     0 14px 42px rgba(0, 0, 0, 0.65),
     inset 0 0 0 1px rgba(242, 237, 228, 0.09);
+}
+
+.vinyl-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Grooves ride ON TOP of the artwork, so it reads as a pressed picture disc
+   rather than a sticker on a black circle. The mask clears the run-out ring
+   around the label, which is unpressed on a real record. */
+.vinyl-grooves {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: repeating-radial-gradient(
+    circle at 50% 50%,
+    rgba(0, 0, 0, 0.6) 0 1px,
+    rgba(255, 255, 255, 0.05) 1px 3px
+  );
+  mask-image: radial-gradient(circle at 50% 50%, transparent 0 22%, #000 25%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 0 22%, #000 25%);
 }
 
 .vinyl-spin { animation: vinyl-spin 1.9s linear infinite; }
@@ -178,101 +268,48 @@ body {
   );
 }
 
-/* The label carries the selected voice's sleeve art. Text sits above it and
-   takes the art's ink colour, so contrast holds whatever the palette is. */
+/* The centre label sits on top of the artwork: a solid ink disc so PLAY/STOP
+   stays legible over whatever the motif is doing underneath. */
 .vinyl-label {
   position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  width: 46%;
+  gap: 1px;
+  width: 42%;
   aspect-ratio: 1;
   border-radius: 50%;
-  overflow: hidden;
-  background: var(--label-paper, var(--accent));
-  color: var(--label-ink, #1c0505);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  background: var(--label-ink, var(--accent));
+  color: var(--label-paper, #1c0505);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.3),
+    0 2px 10px rgba(0, 0, 0, 0.45);
 }
 
-.vinyl-label-art {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.vinyl-label-text {
-  position: relative;
-  font-weight: 800;
-  font-size: 15px;
-  letter-spacing: 0.1em;
-  text-shadow: 0 1px 3px var(--label-paper, transparent);
-}
+.vinyl-label-text { font-weight: 800; font-size: clamp(10px, 2.6vw, 14px); letter-spacing: 0.1em; }
 .vinyl-label-sub {
-  position: relative;
-  max-width: 84%;
-  font-size: 9px;
+  max-width: 86%;
+  font-size: clamp(7px, 1.7vw, 9px);
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   text-align: center;
   opacity: 0.85;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-shadow: 0 1px 3px var(--label-paper, transparent);
 }
 
 .vinyl-hole {
   position: absolute;
+  z-index: 3;
   width: 5.5%;
   aspect-ratio: 1;
   border-radius: 50%;
   background: var(--bg);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6);
 }
-
-/* --- voice cards ---------------------------------------------------------- */
-
-.voice-card {
-  text-align: left;
-  padding: 12px 14px;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid var(--line);
-  background: var(--surface);
-  cursor: pointer;
-  transition: border-color 140ms ease, background 140ms ease, transform 90ms ease;
-  -webkit-tap-highlight-color: transparent;
-}
-.voice-card:hover { border-color: var(--fg-dim); }
-.voice-card:active { transform: scale(0.98); }
-.voice-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.voice-card-on { border-color: var(--accent); background: rgba(255, 59, 48, 0.07); }
-
-.voice-card-head { display: flex; align-items: center; gap: 7px; }
-
-/* A miniature of the label this card selects. */
-.voice-card-disc {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgba(242, 237, 228, 0.18);
-}
-
-.voice-tag {
-  margin-left: auto;
-  padding: 1px 6px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--tape);
-}
-.voice-card-on .voice-tag { border-color: var(--tape); }
 
 /* --- monitor choice ------------------------------------------------------- */
 

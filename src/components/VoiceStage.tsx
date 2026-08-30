@@ -9,8 +9,14 @@ import { MonitorModal } from "./MonitorModal";
 import { PitchReadout } from "./PitchReadout";
 import { RecorderBar } from "./RecorderBar";
 import { VinylButton } from "./VinylButton";
-import { VoiceCards } from "./VoiceCards";
+import { VoicePicker } from "./VoicePicker";
 
+/**
+ * Laid out to fit a single screen on both a phone and a desktop: the deck
+ * (record + readout) and the controls sit side by side once there is width
+ * for it, and stack on a phone. Only the fine-tuning panel, which is closed
+ * by default, can push the page past one screen.
+ */
 export function VoiceStage() {
   const fx = useVoiceFx();
   const recorder = useRecorder(fx.recorderStream);
@@ -19,38 +25,46 @@ export function VoiceStage() {
     <>
       {fx.monitor === null && <MonitorModal onChoose={fx.selectMonitor} />}
 
-      <main className="mx-auto flex w-full max-w-xl flex-col gap-5 px-4 py-8">
-        <header className="flex items-start gap-3">
-          <div className="min-w-0 flex-1 text-center">
-            {/* One unbroken 20-char word: size to the viewport, never wrap or clip. */}
-            <h1 className="wordmark text-[clamp(1.35rem,7vw,3rem)]">soundslikethestrokes</h1>
-            <p className="mt-1 text-sm text-fg-muted">speak normally. come out the other side as someone else.</p>
-          </div>
+      <main className="stage">
+        <header className="flex items-center gap-2">
+          <h1 className="stage-title wordmark min-w-0 flex-1 truncate text-[clamp(1.05rem,4.6vw,1.9rem)]">
+            soundslikethestrokes
+          </h1>
           {fx.monitor && <MonitorBadge value={fx.monitor} onChange={fx.selectMonitor} />}
         </header>
 
-        <div className="flex justify-center py-1">
-          <VinylButton
-            status={fx.status}
-            message={fx.message}
-            voice={fx.voice}
-            disabled={fx.monitor === null}
-            onStart={() => void fx.start()}
-            onStop={fx.stop}
-          />
+        <div className="stage-grid">
+          <section className="flex flex-col items-center gap-2">
+            <VinylButton
+              status={fx.status}
+              message={fx.message}
+              voice={fx.voice}
+              disabled={fx.monitor === null}
+              onStart={() => void fx.start()}
+              onStop={fx.stop}
+            />
+          </section>
+
+          <section className="flex min-w-0 flex-col gap-2">
+            <VoicePicker voice={fx.voice} onSelect={fx.selectVoice} />
+            <PitchReadout telemetry={fx.telemetry} live={fx.status === "live"} />
+            <MacroBars
+              match={fx.macros.match}
+              robot={fx.macros.robot}
+              volume={fx.macros.volume}
+              voiceLabel={fx.voice.label}
+              onChange={fx.setMacro}
+            />
+            <RecorderBar
+              status={recorder.status}
+              elapsed={recorder.elapsed}
+              clip={recorder.clip}
+              canRecord={fx.status === "live"}
+              onStart={recorder.start}
+              onStop={recorder.stop}
+            />
+          </section>
         </div>
-
-        <PitchReadout telemetry={fx.telemetry} live={fx.status === "live"} />
-
-        <MacroBars
-          match={fx.macros.match}
-          robot={fx.macros.robot}
-          volume={fx.macros.volume}
-          voiceLabel={fx.voice.label}
-          onChange={fx.setMacro}
-        />
-
-        <VoiceCards currentId={fx.voice.id} onSelect={fx.selectVoice} />
 
         <AdvancedPanel
           params={fx.params}
@@ -65,17 +79,9 @@ export function VoiceStage() {
           onNoiseCancellation={fx.toggleNoiseCancellation}
         />
 
-        <RecorderBar
-          status={recorder.status}
-          elapsed={recorder.elapsed}
-          clip={recorder.clip}
-          canRecord={fx.status === "live"}
-          onStart={recorder.start}
-          onStop={recorder.stop}
-        />
-
-        <footer className="pt-2 text-center text-xs text-fg-dim">
-          Everything runs in your browser — nothing is uploaded. These are era-inspired voice characters, not clones.
+        <footer className="stage-footer text-center text-[10px] leading-tight text-fg-dim">
+          Runs entirely in your browser. Era-inspired voice characters and original label art — not clones, not the real
+          sleeves.
         </footer>
       </main>
     </>

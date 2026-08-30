@@ -5,16 +5,20 @@ band-limited robot — the Post Malone / T-Pain pitch snap crossed with a
 blown-out Strokes megaphone vocal. Everything runs in the browser; no audio
 ever leaves your machine.
 
-Eleven era-inspired voices across Julian Casablancas (Is This It, the I'll Try
-Anything Once demo, The Voidz), Alex Turner (Whatever People Say I Am, AM,
-Tranquility Base) and Post Malone (Stoney, Hollywood's Bleeding, Twelve Carat
-Toothache) — each card saying what actually differs from its siblings. Five of
-them are hard-tuned "auto" voices that snap every syllable onto the grid,
-including an autotuned take on Julian and on Alex.
+Thirteen era-inspired voices in one dropdown, autotune first: Julian
+Casablancas (Is This It, the I'll Try Anything Once demo, The Voidz, The New
+Abnormal), Alex Turner (Whatever People Say I Am, AM, Tranquility Base, The
+Car) and Post Malone (Stoney, Hollywood's Bleeding, Twelve Carat Toothache),
+plus hard-tuned "auto" takes on Julian and Alex. Picking one tells you exactly
+what differs from its siblings.
 
-Each voice has its own record label art: original generated geometry in an
-era-appropriate palette, shown on the spinning vinyl. These are not the real
-album sleeves, which are copyrighted and aren't reproduced here.
+Each voice is a picture disc: its own generated label art fills the whole
+record, which spins while you're live. The art is original geometry in an
+era-appropriate palette — not the real album sleeves, which are copyrighted
+and aren't reproduced here.
+
+The whole thing fits on one screen, phone or desktop, with the fine-tuning
+panel folded away.
 
 Three controls do the work: **how much** of that voice you want (1% is your
 own, 100% is full character), **robot** for the hard autotuned snap, and
@@ -55,6 +59,7 @@ so the deployed HTTPS build is the only way to use this off localhost.
 
 ```bash
 npx tsx scripts/hardtune-eval.ts   # 15 offline DSP checks, no browser needed
+                                   # (two of them range-check every voice)
 npx tsc --noEmit && npm run lint && npm run build
 ```
 

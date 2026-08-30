@@ -141,6 +141,30 @@ export const VOICES: Voice[] = [
     art: { paper: "#0d1207", ink: "#b8f24a", motif: "glitch" },
   },
   {
+    id: "julian-4",
+    artist: "julian",
+    label: "Julian IV",
+    era: "The New Abnormal · 2020",
+    varies: "Lifted five semitones into the falsetto register — brightest, cleanest and wettest of the four, with almost none of the dirt.",
+    retuneGlideMs: 50,
+    dryWet: 1,
+    drive: 3.5,
+    bits: 16,
+    downsampleFactor: 1,
+    highpassHz: 140,
+    highpassQ: 0.7,
+    lowpassHz: 7500,
+    presenceDb: 4,
+    warbleHz: 0.8,
+    warbleCents: 5,
+    roomMix: 0.5,
+    // Shifting up thins the formants as well as the pitch, and that thinning
+    // is most of what makes a shifted voice read as falsetto rather than
+    // simply higher.
+    semitoneShift: 5,
+    art: { paper: "#101a2e", ink: "#ff7ac6", motif: "orbit" },
+  },
+  {
     id: "julian-auto",
     artist: "julian",
     label: "Julian · Auto",
@@ -224,6 +248,28 @@ export const VOICES: Voice[] = [
     roomMix: 0.45,
     semitoneShift: -2,
     art: { paper: "#241a0e", ink: "#d8b169", motif: "orbit" },
+  },
+  {
+    id: "alex-4",
+    artist: "alex",
+    label: "Alex IV",
+    era: "The Car · 2022",
+    varies: "Silky orchestral croon with real vibrato — down one semitone, warmer and far more expressive than Tranquility Base.",
+    retuneGlideMs: 100,
+    dryWet: 1,
+    drive: 3,
+    bits: 16,
+    downsampleFactor: 1,
+    highpassHz: 100,
+    highpassQ: 0.7,
+    lowpassHz: 5000,
+    presenceDb: 3.5,
+    // The one voice with a singer's vibrato rather than tape wobble.
+    warbleHz: 4.5,
+    warbleCents: 18,
+    roomMix: 0.36,
+    semitoneShift: -1,
+    art: { paper: "#1c1b18", ink: "#b9c2b0", motif: "haze" },
   },
   {
     id: "alex-auto",
@@ -322,6 +368,21 @@ export const ARTISTS = [
 ];
 
 export const DEFAULT_VOICE = VOICES[1]; // Julian II — the one that started this
+
+/**
+ * Dropdown grouping. Autotuned voices lead, because they are the headline
+ * feature and burying them under three artist groups hides them. Post Malone
+ * has no non-autotuned entries, so his artist group is dropped rather than
+ * rendered empty.
+ */
+export function voiceGroups(): { label: string; voices: Voice[] }[] {
+  const groups = [{ label: "Autotune", voices: VOICES.filter((v) => v.autotuned) }];
+  for (const artist of ARTISTS) {
+    const voices = VOICES.filter((v) => v.artist === artist.id && !v.autotuned);
+    if (voices.length) groups.push({ label: artist.name, voices });
+  }
+  return groups;
+}
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 /** Frequencies interpolate geometrically; a linear sweep sounds lopsided. */

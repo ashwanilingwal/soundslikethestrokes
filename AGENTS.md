@@ -127,10 +127,12 @@ communicates nothing on its own.
 | Julian I | Is This It · 2001 | Narrow 450–3200 Hz telephone band, hard clipping, driest |
 | Julian II | I'll Try Anything Once · 2006 demo | Warm 180–2600 Hz, keeps the chest, roomy, sung glide |
 | Julian III | The Voidz · 2014→ | 8-bit crush, 5 Hz/55¢ seasick warble, hard snap |
+| Julian IV | The New Abnormal · 2020 | **+5 semitones** into falsetto, brightest and wettest, least dirt |
 | Julian · Auto | hard-tuned | Julian II's haze, glide 0, wet locked |
 | Alex I | Whatever People Say I Am · 2006 | Bright, dry, barely coloured; wide 150–7000 Hz |
 | Alex II | AM · 2013 | Smoother, softer top, real room |
 | Alex III | Tranquility Base · 2018 | **−2 semitones**, dark 90–4000 Hz, wettest, least bite |
+| Alex IV | The Car · 2022 | −1 semitone, silky, the only true singer's vibrato (4.5 Hz/18¢) |
 | Alex · Auto | hard-tuned | AM smoothness, glide 0, no wobble |
 | Posty I | Stoney · 2016 | Warm/hazy under a hard tune, rounded top |
 | Posty II | Hollywood's Bleeding · 2019 | Cleanest path, brightest, biggest reverb |
@@ -141,14 +143,35 @@ the default 70% they would resolve to ~75 ms of glide — a sung slide, which is
 the one thing these voices exist to not be. The slider visibly moves, so
 pulling it back stays obvious. Eval check `l` guards the invariant.
 
+Voices are chosen from one dropdown (`components/VoicePicker.tsx`) grouped by
+`voiceGroups()`. **Autotune leads the list**, since it is the headline feature
+and burying it under three artist groups hides it; Post Malone has no
+non-autotuned entries, so his artist group is dropped rather than rendered
+empty.
+
 ### Label art
 
 Every voice carries an `art` spec (`paper` / `ink` / `motif`) rendered by
-`components/LabelArt.tsx` as inline SVG — on the record's centre label and as
-a miniature on each card. **This is original generated geometry in an
-era-appropriate palette, NOT the real sleeves**, which are copyrighted and are
-deliberately not reproduced anywhere in this app. `ink` doubles as the label's
-text colour, so any new palette must keep text legible on `paper`.
+`components/LabelArt.tsx` as inline SVG. It fills the **whole record face** —
+a picture disc — with `.vinyl-grooves` riding on top as a translucent overlay
+so it still reads as pressed vinyl rather than a sticker on a black circle.
+The centre label is a solid `ink` disc so PLAY/STOP stays legible over
+whatever the motif is doing underneath.
+
+**This is original generated geometry in an era-appropriate palette, NOT the
+real sleeves**, which are copyrighted and are deliberately not reproduced
+anywhere in this app. Any new palette must keep `paper` and `ink` legible
+against each other, since they are used as both artwork and label text.
+
+### One-screen layout
+
+The stage is sized to fit a single screen without scrolling. Verified with no
+overflow at 360×640, 375×667, 375×812, 390×844, 414×896, 768×1024, 1280×800,
+1440×720 and 1920×1080; a 320×568 (2016 SE-class) phone still overflows by
+~15 px. Three height breakpoints progressively shrink the record and tighten
+gaps (`≤720px`), then clamp the voice description and drop the footer
+(`≤660px` / `≤620px`). Only the fine-tuning panel, closed by default, can push
+past one screen — that is deliberate.
 
 **Julian II is the default.** It targets the First Impressions *demo*, not the
 album cut: warm and hazy, not megaphone-thin — hence the low cut at 180 Hz and

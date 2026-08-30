@@ -7,6 +7,41 @@
 
 const MATCH_STOPS = [0.01, 0.5, 0.7, 1];
 
+function Row({
+  id,
+  label,
+  value,
+  display,
+  min,
+  max,
+  step,
+  onChange,
+  children,
+}: {
+  id: string;
+  label: string;
+  value: number;
+  display: string;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (v: number) => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-baseline justify-between">
+        <label htmlFor={id} className="text-xs font-bold">
+          {label}
+        </label>
+        <span className="num text-xs text-accent-soft">{display}</span>
+      </div>
+      <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+      {children}
+    </div>
+  );
+}
+
 export function MacroBars({
   match,
   robot,
@@ -21,24 +56,18 @@ export function MacroBars({
   onChange: (patch: { match?: number; robot?: number; volume?: number }) => void;
 }) {
   return (
-    <div className="card flex flex-col gap-5 p-4">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-baseline justify-between">
-          <label htmlFor="macro-match" className="text-sm font-bold">
-            How much {voiceLabel}
-          </label>
-          <span className="num text-sm text-accent-soft">{Math.round(match * 100)}%</span>
-        </div>
-        <input
-          id="macro-match"
-          type="range"
-          min={0.01}
-          max={1}
-          step={0.01}
-          value={match}
-          onChange={(e) => onChange({ match: Number(e.target.value) })}
-        />
-        <div className="flex items-center gap-2">
+    <div className="macro-card card flex flex-col gap-2 px-3 py-2.5">
+      <Row
+        id="macro-match"
+        label={`How much ${voiceLabel}`}
+        value={match}
+        display={`${Math.round(match * 100)}%`}
+        min={0.01}
+        max={1}
+        step={0.01}
+        onChange={(v) => onChange({ match: v })}
+      >
+        <div className="flex items-center gap-1.5">
           {MATCH_STOPS.map((s) => (
             <button
               key={s}
@@ -49,49 +78,31 @@ export function MacroBars({
               {Math.round(s * 100)}%
             </button>
           ))}
-          <span className="ml-auto text-xs text-fg-dim">1% = your voice · 100% = full character</span>
+          <span className="ml-auto text-[10px] text-fg-dim">1% = you · 100% = full</span>
         </div>
-      </div>
+      </Row>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex items-baseline justify-between">
-          <label htmlFor="macro-robot" className="text-sm font-bold">
-            Robot
-          </label>
-          <span className="num text-sm text-accent-soft">{Math.round(robot * 100)}%</span>
-        </div>
-        <input
-          id="macro-robot"
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={robot}
-          onChange={(e) => onChange({ robot: Number(e.target.value) })}
-        />
-        <span className="text-xs text-fg-dim">
-          Kills the pitch glide, crushes harder and drives hotter — the hard T-Pain snap, independent of the voice.
-        </span>
-      </div>
+      <Row
+        id="macro-robot"
+        label="Robot"
+        value={robot}
+        display={`${Math.round(robot * 100)}%`}
+        min={0}
+        max={1}
+        step={0.01}
+        onChange={(v) => onChange({ robot: v })}
+      />
 
-      <div className="flex flex-col gap-2">
-        <div className="flex items-baseline justify-between">
-          <label htmlFor="macro-volume" className="text-sm font-bold">
-            Volume
-          </label>
-          <span className="num text-sm text-accent-soft">{Math.round(volume * 100)}%</span>
-        </div>
-        <input
-          id="macro-volume"
-          type="range"
-          min={0}
-          max={2.5}
-          step={0.05}
-          value={volume}
-          onChange={(e) => onChange({ volume: Number(e.target.value) })}
-        />
-        <span className="text-xs text-fg-dim">Above 100% drives the limiter, which keeps it from clipping.</span>
-      </div>
+      <Row
+        id="macro-volume"
+        label="Volume"
+        value={volume}
+        display={`${Math.round(volume * 100)}%`}
+        min={0}
+        max={2.5}
+        step={0.05}
+        onChange={(v) => onChange({ volume: v })}
+      />
     </div>
   );
 }

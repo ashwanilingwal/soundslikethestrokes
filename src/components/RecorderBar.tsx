@@ -25,26 +25,25 @@ export function RecorderBar({
 }) {
   const recording = status === "recording";
   return (
-    <div className="card flex flex-col gap-3 p-4">
-      <div className="flex items-center gap-3">
-        {recording ? (
-          <button type="button" className="btn btn-hot" onClick={onStop}>
-            <span className="rec-dot" aria-hidden /> stop · <span className="num">{fmt(elapsed)}</span>
-          </button>
-        ) : (
-          <button type="button" className="btn" disabled={!canRecord} onClick={onStart}>
-            ● record
-          </button>
-        )}
-        {!canRecord && !recording && <span className="text-xs text-fg-dim">go live first — this captures the effected output</span>}
-      </div>
-      {clip && (
-        <div className="flex flex-wrap items-center gap-3">
-          <audio controls src={clip.url} className="h-9 max-w-full flex-1" />
-          <a className="btn" href={clip.url} download={`soundslikethestrokes.${clip.ext}`}>
-            download · <span className="num">{fmt(clip.seconds)}</span>
+    <div className="card flex flex-wrap items-center gap-2 px-3 py-2">
+      {recording ? (
+        <button type="button" className="btn btn-hot btn-sm" onClick={onStop}>
+          <span className="rec-dot" aria-hidden /> stop · <span className="num">{fmt(elapsed)}</span>
+        </button>
+      ) : (
+        <button type="button" className="btn btn-sm" disabled={!canRecord} onClick={onStart}>
+          ● record
+        </button>
+      )}
+      {clip ? (
+        <>
+          <audio controls src={clip.url} className="h-8 min-w-0 flex-1" />
+          <a className="btn btn-sm" href={clip.url} download={`soundslikethestrokes.${clip.ext}`}>
+            save
           </a>
-        </div>
+        </>
+      ) : (
+        !recording && <span className="text-[11px] text-fg-dim">{canRecord ? "captures the effected output" : "go live first"}</span>
       )}
     </div>
   );
