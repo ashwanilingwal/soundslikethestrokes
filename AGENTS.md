@@ -128,6 +128,36 @@ Then open `/soundcheck` in the browser and press run — it exercises the whole
 chain with an oscillator and needs no microphone. Only the final listen (mic +
 headphones) needs a human.
 
+## Deploying (Vercel)
+
+Zero config — `vercel` or a Git import is enough. Every route is static, there
+is no server code, no database and no env vars; the DSP runs entirely in the
+visitor's browser. Notes that actually matter:
+
+- **HTTPS is the point.** `getUserMedia` only works on a secure origin, so a
+  deployed build is the first place this runs anywhere other than localhost.
+  (`MicError`'s `insecure` branch is what a plain-http origin hits.)
+- **`Permissions-Policy: microphone=(self)`** is set in `next.config.ts`. Same
+  origin is already the browser default; it is explicit because the whole app
+  dies without mic access, and `self` rather than `*` keeps an embedding
+  iframe from inheriting it silently.
+- **The Blob-URL worklet survives production minification** — verified by
+  running the soundcheck against `next start`, not just `next dev` (SWC keeps
+  the class intact and the `__name` shim covers name-mangling helpers). Re-run
+  that check after any toolchain bump; it is the one thing about this app that
+  a build change can quietly break.
+- **If a Content-Security-Policy is ever added**, it must allow `blob:` in
+  `script-src` and `worker-src`, or `audioWorklet.addModule()` fails and the
+  app goes silent. There is no CSP today.
+
+Verify a production build locally before deploying:
+
+```
+npm run build && npm run start -- --port 3601   # or the soundslikethestrokes-prod launch config
+```
+
+then open `/soundcheck` on 3601 and press run — all of A–G must PASS.
+
 ## v2 ideas
 
 - TD-PSOLA shifter for cleaner tuning at the same latency.

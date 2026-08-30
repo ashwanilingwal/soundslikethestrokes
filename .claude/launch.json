@@ -7,6 +7,15 @@
       "runtimeArgs": ["run", "dev"],
       "port": 3600,
       "autoPort": true
+    },
+    {
+      "name": "soundslikethestrokes-prod",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd '/Users/ashwanilingwal/Desktop/HOBBY PROJECTS/soundslikethestrokes' && npm run build && npm run start -- --port 3601"
+      ],
+      "port": 3601
     }
   ]
 }

@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# soundslikethestrokes
 
-## Getting Started
+Speak into your mic, hear yourself live as a hard-autotuned, saturated,
+band-limited robot — the Post Malone / T-Pain pitch snap crossed with a
+blown-out Strokes megaphone vocal. Everything runs in the browser; no audio
+ever leaves your machine.
 
-First, run the development server:
+Four presets: **I'll Try Anything Once** (warm, hazy bedroom-demo saturation),
+**The Strokes** (telephone-band megaphone), **Posty** (hard chromatic snap,
+glossy), and **Voidz** (seasick tape warble). Behind them, individual controls
+for retune glide, key/scale, drive, bitcrush, EQ band, presence, noise gate,
+warble, room and output boost — plus a record button that captures the
+processed output.
+
+## Running it
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open http://localhost:3600 — **headphones recommended**. There is a
+speakers mode that enables echo cancellation to stop the feedback howl, at the
+cost of the browser's AEC occasionally ducking the effect.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploying
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Zero-config on Vercel — all routes are static and there is no server code or
+env config:
 
-## Learn More
+```bash
+npx vercel
+```
 
-To learn more about Next.js, take a look at the following resources:
+A secure origin matters here: `getUserMedia` refuses to run over plain http,
+so the deployed HTTPS build is the only way to use this off localhost.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Verifying changes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npx tsx scripts/hardtune-eval.ts   # 11 offline DSP checks, no browser needed
+npx tsc --noEmit && npm run lint && npm run build
+```
 
-## Deploy on Vercel
+Then open `/soundcheck` — it drives the whole audio chain with an oscillator
+and prints PASS/FAIL lines, so everything except the final listen is testable
+without a microphone. Run it against a production build too (`npm run start`),
+since the audio worklet is assembled from serialised source at runtime.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See [AGENTS.md](AGENTS.md) for the architecture, the DSP internals and the
+constraints that are easy to break.
