@@ -1,21 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Silkscreen, Space_Grotesk, VT323 } from "next/font/google";
+import { Space_Grotesk, VT323 } from "next/font/google";
 import { ConsentProvider } from "@/components/ConsentProvider";
 import { ADSENSE_CLIENT, adsEnabled } from "@/lib/ads";
 import "./globals.css";
 
 /**
- * A late-90s desktop, in type. Silkscreen is the bitmap face for the
- * wordmark, window titles and buttons; VT323 is the CRT terminal font for
- * numbers and readouts. Both are open-licensed from Google Fonts - the
- * fonts the reference site uses are proprietary and are not copied here.
+ * Hardware-panel type. Space Grotesk does the labels and prose - it has
+ * enough character to avoid looking like a dashboard, while staying readable
+ * at the 9-11px an equipment legend wants. VT323 is the LED face, used only
+ * for numbers and readouts.
  *
- * Space Grotesk survives for descriptive prose only: pixel faces are the
- * whole look, but a paragraph set in one is a paragraph nobody reads.
+ * The pixel font this replaced was the legibility problem with the previous
+ * skin: charming at 24px, unreadable at 9px, and every label here is 9px.
  */
-const pixel = Silkscreen({ variable: "--font-pixel", subsets: ["latin"], weight: ["400", "700"] });
-const term = VT323({ variable: "--font-term", subsets: ["latin"], weight: "400" });
 const grotesk = Space_Grotesk({ variable: "--font-grotesk", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+const term = VT323({ variable: "--font-term", subsets: ["latin"], weight: "400" });
 
 export const metadata: Metadata = {
   title: "soundslikethestrokes",
@@ -39,7 +38,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${pixel.variable} ${term.variable} ${grotesk.variable} h-full antialiased`}>
+    <html lang="en" className={`${grotesk.variable} ${term.variable} h-full antialiased`}>
       <body className="min-h-full grain">
         {/* Every third-party tag now lives inside the provider - a script
             rendered here, in a server layout, would be in the HTML before any

@@ -31,11 +31,11 @@ export function VoiceStage() {
       <main className="stage">
         <div className="win stage-window">
           <div className="win-title">
-            <span>soundslikethestrokes.exe</span>
+            <span>vocal deck · live pitch unit</span>
             <span className="win-dots" aria-hidden>
-              <span className="win-dot">_</span>
-              <span className="win-dot">□</span>
-              <span className="win-dot">×</span>
+              <span className="win-dot" />
+              <span className="win-dot" />
+              <span className="win-dot" />
             </span>
           </div>
 

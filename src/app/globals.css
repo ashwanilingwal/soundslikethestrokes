@@ -1,185 +1,170 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   soundslikethestrokes — a late-90s desktop that happens to autotune you.
+   soundslikethestrokes — a DJ deck.
 
-   Electric blue ground, silver bevelled windows, bitmap type. The whole look
-   lives here: components reference semantic tokens only (--fg, --accent,
-   --chrome), never literal colours, so re-skinning is an edit to this file.
+   The Windows-95 skin this replaced looked the part but failed the job:
+   silver-on-silver bevels and bitmap type are low contrast, and this is an
+   instrument you operate while looking at something else (your mic, a
+   lyric sheet). So: dark chassis, bright lit controls, LED readouts. Every
+   interactive state is a LIGHT turning on, not a shade of grey shifting.
 
-   The bevel is the whole trick. A raised control is light on its top/left
-   edges and dark on its bottom/right; pressed swaps them. Two nested borders
-   (outer hard, inner soft) is what separates it from a flat grey box.
+   Components reference semantic tokens only, never literal colours.
    ========================================================================== */
 
 :root {
-  /* Desktop */
-  --desktop: #0d1fb8;
-  --desktop-deep: #08137a;
+  /* Chassis */
+  --chassis: #121317;
+  --chassis-deep: #08090b;
+  --panel: #1c1e24;
+  --panel-lit: #262932;
+  --slot: #0a0b0d;
 
-  /* Window silver */
-  --chrome: #c9c9c9;
-  --chrome-lit: #ffffff;
-  --chrome-dim: #8a8a8a;
-  --chrome-dark: #2f2f2f;
-  --chrome-sunk: #b0b0b0;
+  /* Ink — near-white on near-black is ~15:1, readable at a glance */
+  --fg: #f4f5f7;
+  --fg-muted: #a9aeb8;
+  /* 9px engraved legends are the smallest text here, so this has to clear the
+     4.5:1 AA floor rather than merely look subdued. Measured 5.3:1 on panel. */
+  --fg-dim: #8b919b;
+  --line: rgba(255, 255, 255, 0.12);
+  --line-strong: rgba(255, 255, 255, 0.22);
 
-  /* Active title bar */
-  --title-a: #12148f;
-  --title-b: #2f7fd0;
+  /* Lamps */
+  --accent: #ff2f3a;        /* record / live */
+  --accent-soft: #ff6a72;
+  --cyan: #22dfff;          /* selection, LED text */
+  --amber: #ffb43a;
+  --ok: #3ce87a;
+  --tape: var(--amber);
 
-  /* Ink */
-  --fg: #0e0e0e;
-  --fg-muted: #454545;
-  --fg-dim: #6b6b6b;
-  --fg-on-desktop: #ffffff;
-  --line: rgba(0, 0, 0, 0.28);
-
-  --accent: #d92b1c;
-  --accent-soft: #b02216;
-  --tape: #b8860b;
-  --ok: #1e7a3c;
-
-  --radius: 0px;
-  --radius-sm: 0px;
+  --radius: 10px;
+  --radius-sm: 6px;
 }
 
 @theme inline {
-  --color-bg: var(--desktop);
-  --color-surface: var(--chrome);
-  --color-surface-lift: var(--chrome-lit);
+  --color-bg: var(--chassis-deep);
+  --color-surface: var(--panel);
+  --color-surface-lift: var(--panel-lit);
   --color-fg: var(--fg);
   --color-fg-muted: var(--fg-muted);
   --color-fg-dim: var(--fg-dim);
   --color-line: var(--line);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
+  --color-cyan: var(--cyan);
   --color-tape: var(--tape);
   --color-ok: var(--ok);
-  --font-display: var(--font-pixel);
+  --font-display: var(--font-grotesk);
   --font-sans: var(--font-grotesk);
   --font-num: var(--font-term);
 }
 
-html { color-scheme: light; }
+html { color-scheme: dark; }
 
 body {
-  background: var(--desktop);
-  color: var(--fg-on-desktop);
+  background: var(--chassis-deep);
+  color: var(--fg);
   font-family: var(--font-grotesk), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
 }
 
-::selection { background: var(--title-b); color: #fff; }
+::selection { background: var(--cyan); color: #05202a; }
 
-/* Faint dither over the desktop — a CRT-era gradient, not a smooth one. */
+/* Brushed-metal ground: fine vertical grain plus a broad sheen. */
 .grain {
   background-image:
-    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    radial-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px);
-  background-size: 4px 4px, 6px 6px;
-  background-position: 0 0, 2px 3px;
-}
-
-/* --- bevels ---------------------------------------------------------------- */
-
-.win {
-  background: var(--chrome);
-  border: 2px solid;
-  border-color: var(--chrome-lit) var(--chrome-dark) var(--chrome-dark) var(--chrome-lit);
-  box-shadow:
-    inset 1px 1px 0 rgba(255, 255, 255, 0.85),
-    inset -1px -1px 0 var(--chrome-dim),
-    3px 3px 0 rgba(0, 0, 0, 0.35);
-}
-
-/* Sunken: the bevel inverted, for anything that holds content rather than
-   sits on top of it. */
-.sunk {
-  background: var(--chrome-sunk);
-  border: 2px solid;
-  border-color: var(--chrome-dim) var(--chrome-lit) var(--chrome-lit) var(--chrome-dim);
-  box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.22);
-}
-
-.win-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 4px 3px 6px;
-  margin: 2px 2px 0;
-  background: linear-gradient(90deg, var(--title-a), var(--title-b));
-  color: #fff;
-  font-family: var(--font-pixel), monospace;
-  font-size: 10px;
-  letter-spacing: 0.02em;
-  text-transform: lowercase;
-}
-
-/* Purely decorative window buttons — they look like a titlebar because a
-   titlebar is what sells the whole conceit. */
-.win-dots { margin-left: auto; display: flex; gap: 2px; }
-.win-dot {
-  width: 13px;
-  height: 11px;
-  background: var(--chrome);
-  border: 1px solid;
-  border-color: var(--chrome-lit) var(--chrome-dark) var(--chrome-dark) var(--chrome-lit);
-  font-family: var(--font-pixel), monospace;
-  font-size: 7px;
-  line-height: 9px;
-  text-align: center;
-  color: var(--fg);
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.014) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 80% at 50% 0%, rgba(120, 140, 180, 0.09), transparent 60%);
 }
 
 /* --- type ------------------------------------------------------------------ */
 
 .wordmark {
-  font-family: var(--font-pixel), monospace;
+  font-family: var(--font-grotesk), sans-serif;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--fg);
-  text-transform: lowercase;
-}
-
-.caps {
-  font-family: var(--font-pixel), monospace;
-  font-weight: 400;
-  font-size: 9px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--fg-muted);
+  color: var(--fg);
+}
+
+/* Panel legend: the tiny engraved label above a control on real gear. */
+.caps {
+  font-family: var(--font-grotesk), sans-serif;
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
 }
 
 .num {
   font-family: var(--font-term), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
 }
 
-/* --- stage ------------------------------------------------------------------
-   One window on a desktop, rather than a stack of floating cards: the chrome
-   costs vertical space, and one titlebar is affordable where six are not. */
+/* --- stage ------------------------------------------------------------------ */
 
 .stage {
   display: flex;
   flex-direction: column;
   gap: 7px;
   width: 100%;
-  max-width: 940px;
+  max-width: 960px;
   margin-inline: auto;
-  padding: 6px 8px 9px;
+  padding: 7px 9px 10px;
   min-height: 100dvh;
 }
 
+/* The deck: one chassis holding everything, with a lit top edge so it reads
+   as a physical object under a light rather than a flat div. */
+.win,
 .stage-window {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 7px;
-  padding: 7px;
+  padding: 8px;
   flex: 1;
+  background: linear-gradient(180deg, var(--panel-lit), var(--chassis) 22%, var(--chassis-deep));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 18px 44px rgba(0, 0, 0, 0.6);
 }
+
+/* Header strip, like the badge across the top of a mixer. */
+.win-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.25));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--cyan);
+  font-family: var(--font-grotesk), sans-serif;
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+/* Status lamps rather than window buttons. */
+.win-dots { margin-left: auto; display: flex; gap: 5px; align-items: center; }
+.win-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  font-size: 0;
+  background: var(--slot);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.8);
+}
+.win-dot:first-child { background: var(--ok); box-shadow: 0 0 7px rgba(60, 232, 122, 0.8); }
+.win-dot:nth-child(2) { background: var(--amber); box-shadow: 0 0 7px rgba(255, 180, 58, 0.6); }
 
 .stage-grid {
   display: grid;
@@ -193,117 +178,129 @@ body {
   .stage-grid { grid-template-columns: minmax(180px, 32%) 1fr; gap: 14px; align-items: center; }
 }
 
-/* --- cards ------------------------------------------------------------------ */
+/* --- panels ------------------------------------------------------------------ */
 
 .card {
-  background: var(--chrome);
-  border: 2px solid;
-  border-color: var(--chrome-lit) var(--chrome-dark) var(--chrome-dark) var(--chrome-lit);
-  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.7), inset -1px -1px 0 var(--chrome-dim);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.28));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
   color: var(--fg);
 }
 
-/* --- buttons ---------------------------------------------------------------- */
+/* --- buttons ------------------------------------------------------------------ */
 
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 5px 12px;
-  font-family: var(--font-pixel), monospace;
-  font-size: 10px;
-  letter-spacing: 0.02em;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-grotesk), sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--fg);
-  background: var(--chrome);
-  border: 2px solid;
-  border-color: var(--chrome-lit) var(--chrome-dark) var(--chrome-dark) var(--chrome-lit);
-  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.7), inset -1px -1px 0 var(--chrome-dim);
+  background: linear-gradient(180deg, var(--panel-lit), var(--panel));
+  border: 1px solid var(--line-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 5px rgba(0, 0, 0, 0.5);
   cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease, box-shadow 120ms ease, transform 70ms ease;
   -webkit-tap-highlight-color: transparent;
 }
 
-.btn:hover:not(:disabled) { background: #d4d4d4; }
-/* Pressed = the bevel inverted, and the label nudged with it. */
+.btn:hover:not(:disabled) { color: var(--cyan); border-color: var(--cyan); }
 .btn:active:not(:disabled) {
-  border-color: var(--chrome-dark) var(--chrome-lit) var(--chrome-lit) var(--chrome-dark);
-  box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.25);
-  padding: 6px 11px 4px 13px;
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
 }
-.btn:disabled { color: var(--chrome-dim); text-shadow: 1px 1px 0 var(--chrome-lit); cursor: not-allowed; }
-.btn:focus-visible { outline: 1px dotted var(--fg); outline-offset: -4px; }
+.btn:disabled { color: var(--fg-dim); border-color: var(--line); box-shadow: none; cursor: not-allowed; }
+.btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 
-.btn-sm { padding: 3px 9px; font-size: 9px; }
-.btn-sm:active:not(:disabled) { padding: 4px 8px 2px 10px; }
+.btn-sm { padding: 4px 10px; font-size: 10px; }
 
-.btn-hot { background: var(--accent); color: #fff; }
-.btn-hot:hover:not(:disabled) { background: var(--accent-soft); }
-
-/* --- segmented pickers ------------------------------------------------------
-   The record shelf: everything on offer visible at once, no menu to open. */
-
-.seg-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
+.btn-hot {
+  color: #fff;
+  background: linear-gradient(180deg, var(--accent-soft), var(--accent));
+  border-color: var(--accent);
+  box-shadow: 0 0 14px rgba(255, 47, 58, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
+.btn-hot:hover:not(:disabled) { color: #fff; border-color: #fff; }
+
+/* --- channel-select buttons ----------------------------------------------------
+   The record shelf as a row of mixer channel buttons: everything on offer
+   visible at once, and the selected one is LIT rather than merely darker. */
+
+.seg-row { display: flex; flex-wrap: wrap; gap: 4px; }
 
 .seg {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 4px 8px;
-  font-family: var(--font-pixel), monospace;
-  font-size: 9px;
-  line-height: 1.3;
+  padding: 6px 9px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-grotesk), sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
   text-align: center;
-  color: var(--fg);
-  background: var(--chrome);
-  border: 2px solid;
-  border-color: var(--chrome-lit) var(--chrome-dark) var(--chrome-dark) var(--chrome-lit);
+  color: var(--fg-muted);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.3));
+  border: 1px solid var(--line);
   cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
   -webkit-tap-highlight-color: transparent;
 }
-.seg:hover { background: #d4d4d4; }
-.seg:focus-visible { outline: 1px dotted var(--fg); outline-offset: -4px; }
+.seg:hover { color: var(--fg); border-color: var(--line-strong); }
+.seg:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 
-/* Selected reads as pressed IN, which is how a toggle looked in 1998. */
 .seg-on {
-  border-color: var(--chrome-dark) var(--chrome-lit) var(--chrome-lit) var(--chrome-dark);
-  background:
-    repeating-conic-gradient(var(--chrome-sunk) 0% 25%, #bdbdbd 0% 50%) 0 0 / 3px 3px;
-  box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.2);
-  font-weight: 700;
+  color: #06222b;
+  background: linear-gradient(180deg, #7df0ff, var(--cyan));
+  border-color: var(--cyan);
+  box-shadow: 0 0 16px rgba(34, 223, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  font-weight: 800;
 }
 
 .seg-voice { display: flex; flex-direction: column; gap: 1px; flex: 1 1 30%; }
 .seg-name { display: block; }
-.seg-year { display: block; font-size: 7px; color: var(--fg-dim); }
-.seg-on .seg-year { color: var(--accent-soft); }
+.seg-year {
+  display: block;
+  font-family: var(--font-term), monospace;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--fg-dim);
+}
+.seg-on .seg-year { color: rgba(6, 34, 43, 0.75); }
 
 .voice-varies {
-  font-family: var(--font-grotesk), sans-serif;
   font-size: 11px;
-  line-height: 1.35;
+  line-height: 1.4;
   color: var(--fg-muted);
 }
 
-/* --- the record -------------------------------------------------------------
+/* --- the platter ---------------------------------------------------------------
    A picture disc: artwork over the whole face, grooves as a translucent
-   overlay on top. The sheen sits OUTSIDE the spinning element so the
-   highlight stays put while the disc turns under it. */
+   overlay. The sheen sits OUTSIDE the spinning element so the highlight stays
+   put while the disc turns under it. */
 
 .vinyl-btn {
   position: relative;
-  width: clamp(120px, 32vw, 190px);
+  width: clamp(122px, 32vw, 194px);
   aspect-ratio: 1;
   border: none;
   padding: 0;
   background: transparent;
+  border-radius: 50%;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: transform 80ms ease;
 }
-.vinyl-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.vinyl-btn:focus-visible { outline: 1px dotted var(--chrome-lit); outline-offset: 4px; }
+.vinyl-btn:active:not(:disabled) { transform: scale(0.98); }
+.vinyl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.vinyl-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 5px; }
 
 .vinyl-disc {
   position: absolute;
@@ -314,8 +311,13 @@ body {
   border-radius: 50%;
   overflow: hidden;
   background: var(--label-paper, #0b0908);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.7),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
+
+/* Live: the platter lights up like a spinning deck. */
+.vinyl-btn:has(.vinyl-spin) { box-shadow: 0 0 34px rgba(255, 47, 58, 0.4); border-radius: 50%; }
 
 .vinyl-art { position: absolute; inset: 0; width: 100%; height: 100%; }
 
@@ -326,8 +328,8 @@ body {
   pointer-events: none;
   background: repeating-radial-gradient(
     circle at 50% 50%,
-    rgba(0, 0, 0, 0.6) 0 1px,
-    rgba(255, 255, 255, 0.05) 1px 3px
+    rgba(0, 0, 0, 0.62) 0 1px,
+    rgba(255, 255, 255, 0.06) 1px 3px
   );
   mask-image: radial-gradient(circle at 50% 50%, transparent 0 22%, #000 25%);
   -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 0 22%, #000 25%);
@@ -343,11 +345,11 @@ body {
   pointer-events: none;
   background: linear-gradient(
     118deg,
-    rgba(255, 255, 255, 0.16) 0%,
-    rgba(255, 255, 255, 0.02) 22%,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0.03) 22%,
     transparent 42%,
     transparent 62%,
-    rgba(255, 255, 255, 0.08) 78%,
+    rgba(255, 255, 255, 0.09) 78%,
     transparent 92%
   );
 }
@@ -365,20 +367,21 @@ body {
   border-radius: 50%;
   background: var(--label-ink, var(--accent));
   color: var(--label-paper, #fff);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35), 0 3px 10px rgba(0, 0, 0, 0.5);
 }
 
 .vinyl-label-text {
-  font-family: var(--font-pixel), monospace;
-  font-weight: 700;
-  font-size: clamp(8px, 2.2vw, 11px);
+  font-weight: 800;
+  font-size: clamp(10px, 2.6vw, 14px);
+  letter-spacing: 0.12em;
 }
 .vinyl-label-sub {
   max-width: 86%;
-  font-family: var(--font-pixel), monospace;
-  font-size: clamp(5px, 1.4vw, 7px);
+  font-size: clamp(7px, 1.6vw, 9px);
+  font-weight: 700;
+  letter-spacing: 0.03em;
   text-align: center;
-  opacity: 0.9;
+  opacity: 0.82;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -390,11 +393,11 @@ body {
   width: 5.5%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: var(--chrome);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+  background: var(--chassis-deep);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
-/* --- monitor choice --------------------------------------------------------- */
+/* --- monitor choice ------------------------------------------------------------ */
 
 .modal-backdrop {
   position: fixed;
@@ -404,166 +407,182 @@ body {
   align-items: center;
   justify-content: center;
   padding: 14px;
-  background: rgba(8, 19, 122, 0.72);
+  background: rgba(4, 5, 7, 0.82);
+  backdrop-filter: blur(5px);
 }
 
 .modal-card {
   width: 100%;
-  max-width: 430px;
+  max-width: 440px;
   padding: 0 0 16px;
-  background: var(--chrome);
+  background: linear-gradient(180deg, var(--panel-lit), var(--chassis) 30%, var(--chassis-deep));
   color: var(--fg);
-  border: 2px solid;
-  border-color: var(--chrome-lit) var(--chrome-dark) var(--chrome-dark) var(--chrome-lit);
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 .modal-body { padding: 14px 16px 0; }
 
 .monitor-choice {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 11px;
   width: 100%;
   text-align: left;
-  padding: 9px 11px;
-  background: var(--chrome);
-  border: 2px solid;
-  border-color: var(--chrome-lit) var(--chrome-dark) var(--chrome-dark) var(--chrome-lit);
+  padding: 11px 12px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.3));
+  border: 1px solid var(--line);
   color: var(--fg);
   cursor: pointer;
+  transition: border-color 130ms ease, box-shadow 130ms ease;
 }
-.monitor-choice:hover { background: #d4d4d4; }
-.monitor-choice:active {
-  border-color: var(--chrome-dark) var(--chrome-lit) var(--chrome-lit) var(--chrome-dark);
-}
-.monitor-choice:focus-visible { outline: 1px dotted var(--fg); outline-offset: -4px; }
-.monitor-choice-icon { font-size: 20px; line-height: 1.1; }
+.monitor-choice:hover { border-color: var(--cyan); box-shadow: 0 0 16px rgba(34, 223, 255, 0.2); }
+.monitor-choice:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.monitor-choice-icon { font-size: 21px; line-height: 1.1; }
 
-.monitor-badge { display: flex; gap: 2px; }
+.monitor-badge { display: flex; gap: 3px; }
 .monitor-badge-btn {
-  width: 26px;
-  height: 22px;
-  background: var(--chrome);
-  border: 2px solid;
-  border-color: var(--chrome-lit) var(--chrome-dark) var(--chrome-dark) var(--chrome-lit);
-  font-size: 11px;
+  width: 28px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.3));
+  border: 1px solid var(--line);
+  font-size: 12px;
   line-height: 1;
   cursor: pointer;
-  opacity: 0.55;
+  opacity: 0.5;
+  transition: opacity 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 .monitor-badge-btn:hover { opacity: 0.85; }
 .monitor-badge-on {
   opacity: 1;
-  border-color: var(--chrome-dark) var(--chrome-lit) var(--chrome-lit) var(--chrome-dark);
-  box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.2);
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px rgba(34, 223, 255, 0.35);
 }
-.monitor-badge-btn:focus-visible { outline: 1px dotted var(--fg); outline-offset: -4px; }
+.monitor-badge-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 
-/* --- readout / meter --------------------------------------------------------- */
+/* --- LED meter ------------------------------------------------------------------
+   A segmented ladder, green through amber to red, over a dark slot — the
+   level is readable from the corner of your eye, which a smooth bar is not. */
 
 .meter {
-  height: 10px;
-  background: #0d2a12;
-  border: 2px solid;
-  border-color: var(--chrome-dim) var(--chrome-lit) var(--chrome-lit) var(--chrome-dim);
+  position: relative;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--slot);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9);
   overflow: hidden;
 }
-/* Segmented, like a hardware VU ladder rather than a smooth CSS bar. */
 .meter-fill {
   height: 100%;
-  background:
-    repeating-linear-gradient(90deg, var(--ok) 0 5px, transparent 5px 7px);
+  background: linear-gradient(90deg, var(--ok) 0%, var(--ok) 55%, var(--amber) 78%, var(--accent) 100%);
   transition: width 90ms linear;
+}
+/* Ladder mask: cuts the fill into discrete LEDs. */
+.meter::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(90deg, transparent 0 4px, rgba(0, 0, 0, 0.85) 4px 6px);
 }
 
 .rec-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: var(--accent);
+  box-shadow: 0 0 9px var(--accent);
   animation: rec-blink 1.1s steps(2, start) infinite;
 }
-@keyframes rec-blink { 50% { opacity: 0.2; } }
+@keyframes rec-blink { 50% { opacity: 0.25; } }
 
-/* --- chips ------------------------------------------------------------------- */
+/* --- chips ---------------------------------------------------------------------- */
 
 .chip {
-  padding: 2px 7px;
-  background: var(--chrome);
-  border: 2px solid;
-  border-color: var(--chrome-lit) var(--chrome-dark) var(--chrome-dark) var(--chrome-lit);
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
   color: var(--fg-muted);
-  font-family: var(--font-pixel), monospace;
-  font-size: 8px;
-  cursor: pointer;
-}
-.chip:hover { background: #d4d4d4; color: var(--fg); }
-.chip-on {
-  border-color: var(--chrome-dark) var(--chrome-lit) var(--chrome-lit) var(--chrome-dark);
-  color: var(--accent-soft);
+  font-size: 10px;
   font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
 }
-.chip:focus-visible { outline: 1px dotted var(--fg); outline-offset: -4px; }
+.chip:hover { color: var(--fg); border-color: var(--line-strong); }
+.chip-on {
+  color: #06222b;
+  background: var(--cyan);
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px rgba(34, 223, 255, 0.4);
+}
+.chip:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 
-/* --- form controls ------------------------------------------------------------ */
+/* --- faders ---------------------------------------------------------------------- */
 
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
-  height: 16px;
+  height: 20px;
   background: transparent;
   cursor: pointer;
 }
 input[type="range"]::-webkit-slider-runnable-track {
-  height: 6px;
-  background: var(--chrome-sunk);
-  border: 2px solid;
-  border-color: var(--chrome-dim) var(--chrome-lit) var(--chrome-lit) var(--chrome-dim);
+  height: 5px;
+  border-radius: 3px;
+  background: var(--slot);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9);
 }
-/* A slider handle, not a dot: a raised bevelled tab like a mixer fader. */
+/* A fader cap: tall, bright, with a centre line — grabbable and visible. */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 11px;
-  height: 16px;
-  margin-top: -7px;
-  background: var(--chrome);
-  border: 2px solid;
-  border-color: var(--chrome-lit) var(--chrome-dark) var(--chrome-dark) var(--chrome-lit);
+  width: 13px;
+  height: 19px;
+  margin-top: -8px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #f2f4f8 0 46%, #9aa1ad 47%, #cfd4dc 100%);
+  border: 1px solid #05070a;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
 }
+input[type="range"]:hover::-webkit-slider-thumb { box-shadow: 0 0 12px rgba(34, 223, 255, 0.6); }
 input[type="range"]::-moz-range-track {
-  height: 6px;
-  background: var(--chrome-sunk);
-  border: 2px solid;
-  border-color: var(--chrome-dim) var(--chrome-lit) var(--chrome-lit) var(--chrome-dim);
+  height: 5px;
+  border-radius: 3px;
+  background: var(--slot);
+  border: 1px solid var(--line);
 }
 input[type="range"]::-moz-range-thumb {
-  width: 11px;
-  height: 16px;
-  border-radius: 0;
-  background: var(--chrome);
-  border: 2px solid;
-  border-color: var(--chrome-lit) var(--chrome-dark) var(--chrome-dark) var(--chrome-lit);
+  width: 13px;
+  height: 19px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #f2f4f8 0 46%, #9aa1ad 47%, #cfd4dc 100%);
+  border: 1px solid #05070a;
 }
 
 select {
-  background: var(--chrome-lit);
-  border: 2px solid;
-  border-color: var(--chrome-dim) var(--chrome-lit) var(--chrome-lit) var(--chrome-dim);
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
   color: var(--fg);
-  padding: 3px 6px;
-  font-family: var(--font-grotesk), sans-serif;
+  padding: 5px 8px;
   font-size: 12px;
 }
+select:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 
-input[type="checkbox"] { accent-color: var(--title-a); }
+input[type="checkbox"] { accent-color: var(--cyan); }
 
-details > summary { list-style: none; }
+details > summary { list-style: none; cursor: pointer; }
 details > summary::-webkit-details-marker { display: none; }
-details > summary::before { content: "▸ "; }
+details > summary::before { content: "▸ "; color: var(--cyan); }
 details[open] > summary::before { content: "▾ "; }
 
-/* --- ad slot ------------------------------------------------------------------ */
+/* --- ad slot ---------------------------------------------------------------------- */
 
 .ad-slot {
   margin-top: auto;
@@ -573,7 +592,7 @@ details[open] > summary::before { content: "▾ "; }
   overflow: hidden;
 }
 
-/* --- consent bar --------------------------------------------------------------
+/* --- consent bar -------------------------------------------------------------------
    Fixed, so it never enters the flow and cannot break the one-screen layout. */
 
 .consent-bar {
@@ -584,24 +603,23 @@ details[open] > summary::before { content: "▾ "; }
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 9px;
-  padding: 8px 12px;
-  background: var(--chrome);
-  border-top: 2px solid var(--chrome-lit);
-  box-shadow: 0 -3px 0 rgba(0, 0, 0, 0.3);
+  gap: 10px;
+  padding: 9px 14px;
+  background: rgba(10, 11, 13, 0.96);
+  border-top: 1px solid var(--line-strong);
+  backdrop-filter: blur(8px);
   color: var(--fg);
 }
 
 .consent-copy {
   flex: 1 1 250px;
   min-width: 0;
-  font-family: var(--font-grotesk), sans-serif;
   font-size: 11px;
-  line-height: 1.4;
+  line-height: 1.45;
   color: var(--fg-muted);
 }
 
-.consent-actions { display: flex; gap: 6px; margin-inline-start: auto; }
+.consent-actions { display: flex; gap: 7px; margin-inline-start: auto; }
 
 .consent-reopen {
   border: none;
@@ -610,17 +628,19 @@ details[open] > summary::before { content: "▾ "; }
   color: inherit;
   font: inherit;
   text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
 }
+.consent-reopen:hover { color: var(--cyan); }
 
-/* --- short viewports -----------------------------------------------------------
-   Shrink the record and tighten gaps rather than growing a scrollbar. */
+/* --- short viewports -----------------------------------------------------------------
+   Shrink the platter and tighten gaps rather than growing a scrollbar. */
 
 @media (max-height: 720px) {
-  .stage { gap: 5px; padding: 4px 8px 7px; }
-  .stage-window { gap: 5px; padding: 5px; }
+  .stage { gap: 5px; padding: 5px 9px 8px; }
+  .win, .stage-window { gap: 5px; padding: 6px; }
   .stage-grid { gap: 6px; }
-  .vinyl-btn { width: clamp(92px, 24vw, 128px); }
+  .vinyl-btn { width: clamp(94px, 24vw, 130px); }
   .card { padding-block: 4px; }
   .voice-varies {
     display: -webkit-box;
@@ -630,15 +650,23 @@ details[open] > summary::before { content: "▾ "; }
   }
 }
 
+/* The deck's header strip and padding cost ~25px more than the flat skin did,
+   which a 640px-tall phone cannot absorb. Buy it back from the platter and
+   the description, in that order — neither is needed to operate anything. */
+@media (max-height: 665px) {
+  .vinyl-btn { width: clamp(80px, 21vw, 112px); }
+  .voice-varies { -webkit-line-clamp: 1; }
+}
+
 @media (max-height: 620px) {
   .stage-footer { display: none; }
   .voice-varies { -webkit-line-clamp: 1; }
-  .vinyl-btn { width: clamp(76px, 20vw, 104px); }
+  .vinyl-btn { width: clamp(78px, 20vw, 106px); }
   .stage { gap: 3px; }
-  input[type="range"] { height: 13px; }
-  input[type="range"]::-webkit-slider-thumb { height: 13px; margin-top: -5.5px; }
+  input[type="range"] { height: 15px; }
+  input[type="range"]::-webkit-slider-thumb { height: 15px; margin-top: -6px; }
   .macro-card { gap: 3px; padding-block: 3px; }
-  .stage-title { font-size: 0.8rem; }
+  .stage-title { font-size: 0.85rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
