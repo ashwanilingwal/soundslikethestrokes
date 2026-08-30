@@ -33,6 +33,7 @@ getUserMedia (noiseSuppression/autoGainControl OFF, mono;
   → WaveShaper                    [tanh(drive·x)/tanh(drive), 4x oversample]
   → Biquad highpass → peaking 1.8 kHz "presence" → lowpass   [megaphone band + mid bite]
   → master gain                   [> 1 allowed: this is the output boost]
+       ↑ parallel send: lowpass → Convolver (synthesised dark room IR) → roomWet →
   → DynamicsCompressor limiter    [-3 dB, knee 3, ratio 20, 1 ms / 80 ms — StrumLab's settings,
                                    deliberately LAST so the boost can't slam the DAC]
   → destination
@@ -82,16 +83,24 @@ fallback is to ship the compiled kernel as `public/hardtune-worklet.js` and
 
 ## Presets
 
-| Param | The Strokes | Posty | Voidz |
-|---|---|---|---|
-| retune glide | 40 ms | 0 ms | 0 ms |
-| drive | 6.5 | 2 | 8 |
-| bits / downsample | 10 / 3× | 16 / 1× (off) | 8 / 4× |
-| band | 400–3400 Hz | 120–9000 Hz | 300–2800 Hz |
-| presence | +9 dB | +3 dB | +6 dB |
-| gate | -48 dB | -52 dB | -48 dB |
-| warble | off | off | 5 Hz / 55¢ |
-| master | 1.1 | 1.0 | 1.1 |
+| Param | I'll Try Anything Once | The Strokes | Posty | Voidz |
+|---|---|---|---|---|
+| retune glide | 70 ms | 40 ms | 0 ms | 0 ms |
+| drive | 11 | 9 | 2 | 10 |
+| bits / downsample | 12 / 2× | 10 / 3× | 16 / 1× (off) | 8 / 4× |
+| band | 180–2600 Hz | 400–3400 Hz | 120–9000 Hz | 300–2800 Hz |
+| presence | +5 dB | +9 dB | +3 dB | +6 dB |
+| gate | -50 dB | -48 dB | -52 dB | -48 dB |
+| warble | 1.5 Hz / 12¢ | off | off | 5 Hz / 55¢ |
+| room | 0.38 | 0.12 | 0.18 | 0.25 |
+| master | 1.15 | 1.1 | 1.0 | 1.1 |
+
+**I'll Try Anything Once is the default preset.** It targets the First
+Impressions *demo*, not the album cut: Julian close on a cheap mic in a room —
+warm and hazy, not megaphone-thin. Hence the low cut staying at 180 Hz (keeps
+the chest), a veiled rather than shredded top, high drive that soft-clips into
+tape saturation rather than fuzz, and a glide that is deliberately NOT zero —
+he slides between notes, and a hard robotic snap would be Posty, not Julian.
 
 ## Latency
 

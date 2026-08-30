@@ -12,7 +12,7 @@ export interface Preset {
   retuneGlideMs: number;
   /** 0 dry .. 1 fully shifted. */
   dryWet: number;
-  /** tanh drive; 1 is nearly clean, 6+ is a blown-out megaphone. */
+  /** tanh drive; 1 is nearly clean, 8+ is properly blown out. */
   drive: number;
   /** Bitcrusher: 16 bits + factor 1 = off. */
   bits: number;
@@ -28,9 +28,40 @@ export interface Preset {
   /** Pitch LFO: vibrato at small depths, broken-tape warble at big ones. */
   warbleHz: number;
   warbleCents: number;
+  /** Reverb send. 0 is bone dry; the demo-tape sounds need real space. */
+  roomMix: number;
   /** Output level into the limiter; > 1 is boost, the limiter catches it. */
   masterGain: number;
 }
+
+/**
+ * The "I'll Try Anything Once" vocal: the First Impressions demo, not the
+ * album. Julian close on a cheap mic in a room, warm and hazy rather than
+ * megaphone-thin - so the low cut stays low (180 Hz keeps the chest), the top
+ * is veiled instead of shredded, and the drive is high but soft-clipped so it
+ * reads as saturated tape rather than fuzz pedal. The glide is deliberately
+ * NOT zero: he slides between notes, and a hard robotic snap would be Posty,
+ * not Julian. Room and a slow shallow warble do the rest.
+ */
+export const ITAO: Preset = {
+  id: "itao",
+  label: "I'll Try Anything Once",
+  tagline: "warm bedroom demo, saturated and hazy",
+  retuneGlideMs: 70,
+  dryWet: 1,
+  drive: 11,
+  bits: 12,
+  downsampleFactor: 2,
+  highpassHz: 180,
+  highpassQ: 0.7,
+  lowpassHz: 2600,
+  presenceDb: 5,
+  gateDb: -50,
+  warbleHz: 1.5,
+  warbleCents: 12,
+  roomMix: 0.38,
+  masterGain: 1.15,
+};
 
 /**
  * Heavy saturation through a tight telephone band with a shouty mid bump,
@@ -43,7 +74,7 @@ export const THE_STROKES: Preset = {
   tagline: "blown-out megaphone, half-broken PA",
   retuneGlideMs: 40,
   dryWet: 1,
-  drive: 6.5,
+  drive: 9,
   bits: 10,
   downsampleFactor: 3,
   highpassHz: 400,
@@ -53,6 +84,7 @@ export const THE_STROKES: Preset = {
   gateDb: -48,
   warbleHz: 0,
   warbleCents: 0,
+  roomMix: 0.12,
   masterGain: 1.1,
 };
 
@@ -73,6 +105,7 @@ export const POSTY: Preset = {
   gateDb: -52,
   warbleHz: 0,
   warbleCents: 0,
+  roomMix: 0.18,
   masterGain: 1,
 };
 
@@ -83,7 +116,7 @@ export const VOIDZ: Preset = {
   tagline: "seasick warble, melted tape robot",
   retuneGlideMs: 0,
   dryWet: 1,
-  drive: 8,
+  drive: 10,
   bits: 8,
   downsampleFactor: 4,
   highpassHz: 300,
@@ -93,7 +126,8 @@ export const VOIDZ: Preset = {
   gateDb: -48,
   warbleHz: 5,
   warbleCents: 55,
+  roomMix: 0.25,
   masterGain: 1.1,
 };
 
-export const PRESETS: Preset[] = [THE_STROKES, POSTY, VOIDZ];
+export const PRESETS: Preset[] = [ITAO, THE_STROKES, POSTY, VOIDZ];

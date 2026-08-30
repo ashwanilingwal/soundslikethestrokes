@@ -128,12 +128,36 @@ export default function Page() {
       }
       say(`E. drive 12 into limiter: abs peak ${absPeak.toFixed(3)}  ${absPeak > 0.05 && absPeak < 0.99 ? "PASS" : "FAIL"}`);
 
-      // F. recorder stream + mime support.
+      // F. the room: after the source is cut, a wet chain must still ring.
+      chain.setParams({ drive: 2, masterGain: 1, roomMix: 0 });
+      oscGain.gain.value = 0.35;
+      const tailAfterCut = async () => {
+        await waitTicks(8);
+        oscGain.gain.setValueAtTime(0, ctx.currentTime);
+        await waitTicks(4); // ~170 ms: past the grain tail, inside a reverb tail
+        let sum = 0;
+        let count = 0;
+        for (let i = 0; i < 6; i++) {
+          an.getFloatTimeDomainData(buf);
+          for (const v of buf) sum += v * v;
+          count += buf.length;
+          await waitTicks(1);
+        }
+        oscGain.gain.setValueAtTime(0.35, ctx.currentTime);
+        return Math.sqrt(sum / count);
+      };
+      const dryTail = await tailAfterCut();
+      chain.setParams({ roomMix: 0.9 });
+      const wetTail = await tailAfterCut();
+      chain.setParams({ roomMix: 0 });
+      say(`F. room tail after cut: dry ${dryTail.toExponential(2)} vs wet ${wetTail.toExponential(2)}  ${wetTail > dryTail * 5 && wetTail > 1e-3 ? "PASS" : "FAIL"}`);
+
+      // G. recorder stream + mime support.
       const mime = ["audio/webm;codecs=opus", "audio/mp4"].find((m) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(m));
       const tracks = chain.recorderStream.getAudioTracks().length;
-      say(`F. recorder: ${tracks} audio track(s), mime ${mime ?? "browser default"}  ${tracks === 1 ? "PASS" : "FAIL"}`);
+      say(`G. recorder: ${tracks} audio track(s), mime ${mime ?? "browser default"}  ${tracks === 1 ? "PASS" : "FAIL"}`);
 
-      say(`G. latency (informational): base ${((ctx.baseLatency ?? 0) * 1000).toFixed(1)} ms, output ${((ctx.outputLatency ?? 0) * 1000).toFixed(1)} ms`);
+      say(`H. latency (informational): base ${((ctx.baseLatency ?? 0) * 1000).toFixed(1)} ms, output ${((ctx.outputLatency ?? 0) * 1000).toFixed(1)} ms`);
 
       osc.stop();
       chain.disconnect();

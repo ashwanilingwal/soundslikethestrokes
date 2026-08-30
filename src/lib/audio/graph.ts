@@ -62,6 +62,8 @@ export interface AdvancedParams {
   gateDb: number;
   warbleHz: number;
   warbleCents: number;
+  /** Reverb send, 0 = bone dry. */
+  roomMix: number;
   masterGain: number;
 }
 
@@ -138,6 +140,35 @@ class HardtuneProcessor extends AudioWorkletProcessor {
 registerProcessor("hardtune", HardtuneProcessor);
 `;
 
+/**
+ * A dark little room, synthesised rather than shipped: decaying noise, one-pole
+ * lowpassed so the tail is warm instead of fizzy, with a short silent
+ * pre-delay so the voice keeps its edge before the space arrives. Two
+ * decorrelated channels, which is what widens a mono worklet into something
+ * that sounds like a room rather than a dot in the middle of your head.
+ *
+ * Deterministic LCG, not Math.random: the same build should always sound the
+ * same, and a bad-sounding tail should be reproducible.
+ */
+function makeRoomIR(ctx: AudioContext, seconds = 1.9, decay = 2.8): AudioBuffer {
+  const sr = ctx.sampleRate;
+  const len = Math.floor(sr * seconds);
+  const preDelay = Math.floor(sr * 0.02);
+  const ir = ctx.createBuffer(2, len, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = ir.getChannelData(ch);
+    let seed = ch === 0 ? 22229 : 99991;
+    const rand = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff) * 2 - 1;
+    let lp = 0;
+    for (let i = preDelay; i < len; i++) {
+      lp += (rand() - lp) * 0.22; // one-pole: darkens the tail
+      const t = (i - preDelay) / (len - preDelay);
+      data[i] = lp * Math.pow(1 - t, decay);
+    }
+  }
+  return ir;
+}
+
 /** tanh(drive * x) / tanh(drive): unity at the rails, soft-clipped between. */
 function shaperCurve(drive: number): Float32Array<ArrayBuffer> {
   const n = 2048;
@@ -213,6 +244,11 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
   presence.frequency.value = 1800;
   presence.Q.value = 0.9;
 
+  // Reverb as a parallel send: dry stays intact, the room is added beside it.
+  const roomSend = ctx.createConvolver();
+  roomSend.buffer = makeRoomIR(ctx);
+  const roomWet = ctx.createGain();
+
   const master = ctx.createGain();
 
   // StrumLab's master-bus limiter, verbatim - but LAST in the chain, after
@@ -231,6 +267,7 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
   const recorderDest = ctx.createMediaStreamDestination();
 
   hardtune.connect(shaper).connect(highpass).connect(presence).connect(lowpass).connect(master).connect(limiter);
+  lowpass.connect(roomSend).connect(roomWet).connect(master);
   limiter.connect(analyser);
   limiter.connect(recorderDest);
 
@@ -253,6 +290,7 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
     if (p.highpassHz !== undefined) ramp(highpass.frequency, p.highpassHz);
     if (p.lowpassHz !== undefined) ramp(lowpass.frequency, p.lowpassHz);
     if (p.presenceDb !== undefined) ramp(presence.gain, p.presenceDb);
+    if (p.roomMix !== undefined) ramp(roomWet.gain, p.roomMix);
     if (p.masterGain !== undefined) ramp(master.gain, p.masterGain);
     if (p.bits !== undefined || p.downsampleFactor !== undefined) {
       hardtune.port.postMessage({ bits: p.bits, downsampleFactor: p.downsampleFactor });
@@ -280,6 +318,7 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
       gateDb: next.gateDb,
       warbleHz: next.warbleHz,
       warbleCents: next.warbleCents,
+      roomMix: next.roomMix,
       masterGain: next.masterGain,
     });
   };
@@ -288,6 +327,7 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
   highpass.frequency.value = preset.highpassHz;
   lowpass.frequency.value = preset.lowpassHz;
   presence.gain.value = preset.presenceDb;
+  roomWet.gain.value = preset.roomMix;
   master.gain.value = preset.masterGain;
   applyPreset(preset);
 
@@ -313,6 +353,8 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
         highpass.disconnect();
         presence.disconnect();
         lowpass.disconnect();
+        roomSend.disconnect();
+        roomWet.disconnect();
         master.disconnect();
         limiter.disconnect();
       } catch {

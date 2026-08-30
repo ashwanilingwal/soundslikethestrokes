@@ -9,7 +9,7 @@ import {
   type Telemetry,
   type VoiceGraph,
 } from "@/lib/audio/graph";
-import { THE_STROKES, type Preset } from "@/lib/audio/presets";
+import { ITAO, type Preset } from "@/lib/audio/presets";
 import { maskFor, type ScaleChoice } from "@/lib/dsp/scales";
 
 /**
@@ -33,6 +33,7 @@ function paramsFrom(preset: Preset): AdvancedParams {
     gateDb: preset.gateDb,
     warbleHz: preset.warbleHz,
     warbleCents: preset.warbleCents,
+    roomMix: preset.roomMix,
     masterGain: preset.masterGain,
   };
 }
@@ -40,8 +41,8 @@ function paramsFrom(preset: Preset): AdvancedParams {
 export function useVoiceFx() {
   const [status, setStatus] = useState<VoiceStatus>("off");
   const [message, setMessage] = useState<string | null>(null);
-  const [preset, setPreset] = useState<Preset>(THE_STROKES);
-  const [params, setParams] = useState<AdvancedParams>(paramsFrom(THE_STROKES));
+  const [preset, setPreset] = useState<Preset>(ITAO);
+  const [params, setParams] = useState<AdvancedParams>(paramsFrom(ITAO));
   const [scale, setScale] = useState<ScaleChoice>({ kind: "chromatic" });
   /** null until the user has actively picked one - it doubles as the gate. */
   const [monitor, setMonitor] = useState<MonitorMode | null>(null);
