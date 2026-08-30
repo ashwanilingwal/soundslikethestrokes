@@ -47,6 +47,21 @@ export class HardtuneKernel {
   ratio: number;
   targetRatio: number;
 
+  // -- noise gate --
+  gateThreshold: number;
+  gateEnv: number;
+  gateGain: number;
+  gateOpen: boolean;
+  gateAttackK: number;
+  gateEnvRelK: number;
+  gateOpenK: number;
+  gateCloseK: number;
+
+  // -- warble (pitch LFO) --
+  warbleHz: number;
+  warbleCents: number;
+  warblePhase: number;
+
   // -- bitcrusher --
   shCount: number;
   shHeld: number;
@@ -96,6 +111,24 @@ export class HardtuneKernel {
     this.ratio = 1;
     this.targetRatio = 1;
 
+    // Downward gate ahead of the ring buffer, so room noise neither reaches
+    // the output nor confuses the pitch detector. 0 = off. Hysteresis (close
+    // at half the open threshold) stops it chattering on breathy tails.
+    this.gateThreshold = 0;
+    this.gateEnv = 0;
+    this.gateGain = 1;
+    this.gateOpen = true;
+    this.gateAttackK = 1 - Math.exp(-1 / (0.003 * sampleRate));
+    this.gateEnvRelK = 1 - Math.exp(-1 / (0.08 * sampleRate));
+    this.gateOpenK = 1 - Math.exp(-1 / (0.004 * sampleRate));
+    this.gateCloseK = 1 - Math.exp(-1 / (0.12 * sampleRate));
+
+    // Pitch LFO on the playback ratio - vibrato at small depths, a broken
+    // tape warble at large ones.
+    this.warbleHz = 0;
+    this.warbleCents = 0;
+    this.warblePhase = 0;
+
     this.shCount = 0;
     this.shHeld = 0;
 
@@ -140,6 +173,20 @@ export class HardtuneKernel {
   setCrush(bits: number, downsampleFactor: number): void {
     this.bits = Math.min(16, Math.max(4, Math.round(bits)));
     this.downsampleFactor = Math.min(16, Math.max(1, Math.round(downsampleFactor)));
+  }
+
+  /** Linear amplitude threshold; 0 disables the gate. */
+  setGate(threshold: number): void {
+    this.gateThreshold = Math.max(0, threshold);
+    if (this.gateThreshold === 0) {
+      this.gateOpen = true;
+      this.gateGain = 1;
+    }
+  }
+
+  setWarble(hz: number, cents: number): void {
+    this.warbleHz = Math.min(12, Math.max(0, hz));
+    this.warbleCents = Math.min(100, Math.max(0, cents));
   }
 
   /**
@@ -249,10 +296,24 @@ export class HardtuneKernel {
     let rmsAcc = 0;
 
     for (let i = 0; i < n; i++) {
-      const x = input[i];
+      let x = input[i];
+      rmsAcc += x * x;
+
+      // -- noise gate (pre-ring: the detector must not hear the room either) --
+      if (this.gateThreshold > 0) {
+        const a = x < 0 ? -x : x;
+        this.gateEnv += (a - this.gateEnv) * (a > this.gateEnv ? this.gateAttackK : this.gateEnvRelK);
+        if (this.gateOpen) {
+          if (this.gateEnv < this.gateThreshold * 0.5) this.gateOpen = false;
+        } else if (this.gateEnv > this.gateThreshold) {
+          this.gateOpen = true;
+        }
+        this.gateGain += ((this.gateOpen ? 1 : 0) - this.gateGain) * (this.gateOpen ? this.gateOpenK : this.gateCloseK);
+        x *= this.gateGain;
+      }
+
       ring[this.w & mask] = x;
       this.w++;
-      rmsAcc += x * x;
 
       // -- detection cadence --
       if (++this.sinceDetect >= this.detHop) {
@@ -292,8 +353,16 @@ export class HardtuneKernel {
       // -- ratio smoothing (never bypass the grain player: a delay jump clicks) --
       this.ratio += (this.targetRatio - this.ratio) * (this.voiced ? this.glideK : this.relaxK);
 
+      // -- warble: LFO on the playback ratio --
+      let rEff = this.ratio;
+      if (this.warbleCents > 0 && this.warbleHz > 0) {
+        this.warblePhase += this.warbleHz / this.sr;
+        if (this.warblePhase >= 1) this.warblePhase -= 1;
+        rEff *= Math.pow(2, (this.warbleCents * Math.sin(6.283185307179586 * this.warblePhase)) / 1200);
+      }
+
       // -- dual-tap grain player --
-      let p = this.phase + (1 - this.ratio) / grain;
+      let p = this.phase + (1 - rEff) / grain;
       p -= Math.floor(p);
       this.phase = p;
       const p2 = p >= 0.5 ? p - 0.5 : p + 0.5;

@@ -28,11 +28,14 @@ processed output for download.
 getUserMedia (noiseSuppression/autoGainControl OFF, mono;
               echoCancellation OFF in headphones mode, ON in speaker mode)
   → MediaStreamSource
-  → AudioWorkletNode "hardtune"   [NSDF pitch detect + semitone snap + grain shifter + dry/wet + bitcrush]
+  → AudioWorkletNode "hardtune"   [noise gate + NSDF pitch detect + semitone snap +
+                                   grain shifter + warble LFO + dry/wet + bitcrush]
   → WaveShaper                    [tanh(drive·x)/tanh(drive), 4x oversample]
-  → Biquad highpass → lowpass     [megaphone band-limit]
-  → DynamicsCompressor limiter    [-3 dB, knee 3, ratio 20, 1 ms / 80 ms — StrumLab's settings]
-  → master gain → destination
+  → Biquad highpass → peaking 1.8 kHz "presence" → lowpass   [megaphone band + mid bite]
+  → master gain                   [> 1 allowed: this is the output boost]
+  → DynamicsCompressor limiter    [-3 dB, knee 3, ratio 20, 1 ms / 80 ms — StrumLab's settings,
+                                   deliberately LAST so the boost can't slam the DAC]
+  → destination
         ├→ AnalyserNode           [soundcheck taps]
         └→ MediaStreamDestination [MediaRecorder]
 ```
@@ -69,17 +72,26 @@ fallback is to ship the compiled kernel as `public/hardtune-worklet.js` and
 - Dry tap reads at the shifter's mean delay so dry/wet mixing can't comb-filter.
 - Unvoiced: hold last ratio 200 ms (consonants at note-ends stay pitched), then
   relax to unity over 50 ms. Never bypass — a delay jump clicks.
+- Noise gate sits BEFORE the ring buffer, so room hiss neither reaches the
+  output nor confuses the detector. Downward gate with hysteresis (closes at
+  half the open threshold), 3 ms envelope attack, ~120 ms close fade. -75 dB
+  on the UI slider = off.
+- Warble = pitch LFO multiplied into the playback ratio (0–10 Hz, 0–100 cents):
+  vibrato at small depths, melted-tape robot at large ones.
 - No allocation inside `process()`.
 
 ## Presets
 
-| Param | The Strokes | Posty |
-|---|---|---|
-| retune glide | 40 ms | 0 ms |
-| drive | 6 | 2 |
-| bits / downsample | 10 / 3× | 16 / 1× (off) |
-| band | 400–3200 Hz | 120–9000 Hz |
-| master | 0.85 | 0.9 |
+| Param | The Strokes | Posty | Voidz |
+|---|---|---|---|
+| retune glide | 40 ms | 0 ms | 0 ms |
+| drive | 6.5 | 2 | 8 |
+| bits / downsample | 10 / 3× | 16 / 1× (off) | 8 / 4× |
+| band | 400–3400 Hz | 120–9000 Hz | 300–2800 Hz |
+| presence | +9 dB | +3 dB | +6 dB |
+| gate | -48 dB | -52 dB | -48 dB |
+| warble | off | off | 5 Hz / 55¢ |
+| master | 1.1 | 1.0 | 1.1 |
 
 ## Latency
 

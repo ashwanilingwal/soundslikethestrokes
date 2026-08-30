@@ -89,7 +89,11 @@ export function AdvancedPanel({
         <Slider label="downsample" value={params.downsampleFactor} min={1} max={16} step={1} unit="×" onChange={(v) => onParams({ downsampleFactor: v })} />
         <Slider label="low cut" value={params.highpassHz} min={60} max={1000} step={20} unit=" Hz" onChange={(v) => onParams({ highpassHz: v })} />
         <Slider label="high cut" value={params.lowpassHz} min={1000} max={12000} step={100} unit=" Hz" onChange={(v) => onParams({ lowpassHz: v })} />
-        <Slider label="output" value={params.masterGain} min={0} max={1} step={0.05} onChange={(v) => onParams({ masterGain: v })} />
+        <Slider label="presence (mid bite)" value={params.presenceDb} min={0} max={12} step={1} unit=" dB" onChange={(v) => onParams({ presenceDb: v })} />
+        <Slider label="noise gate (-75 = off)" value={params.gateDb} min={-75} max={-25} step={1} unit=" dB" onChange={(v) => onParams({ gateDb: v })} />
+        <Slider label="warble rate" value={params.warbleHz} min={0} max={10} step={0.5} unit=" Hz" onChange={(v) => onParams({ warbleHz: v })} />
+        <Slider label="warble depth" value={params.warbleCents} min={0} max={100} step={5} unit=" ¢" onChange={(v) => onParams({ warbleCents: v })} />
+        <Slider label="output (boost past 1)" value={params.masterGain} min={0} max={2.5} step={0.05} onChange={(v) => onParams({ masterGain: v })} />
       </div>
     </details>
   );

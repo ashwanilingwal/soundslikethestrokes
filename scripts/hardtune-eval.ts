@@ -182,6 +182,47 @@ function sine(hzAt: (t: number) => number, seconds: number, amp = 0.4): Float32A
   check("e  shifter is roughly unity gain", outR > inR * 0.5 && outR < inR * 1.5, `in ${inR.toFixed(3)} out ${outR.toFixed(3)}`);
 }
 
+// ----------------------------------------------------------- (g) noise gate
+{
+  const kernel = new HardtuneKernel(SR);
+  kernel.setGate(Math.pow(10, -45 / 20)); // open at -45 dB
+  // Deterministic noise at ~-50 dB peak - room hiss the gate should eat.
+  let seed = 1234567;
+  const rand = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff) * 2 - 1;
+  const noise = new Float32Array(SR);
+  for (let i = 0; i < noise.length; i++) noise[i] = 0.003 * rand();
+  const noiseOut = run(kernel, noise);
+  const rms = (b: Float32Array) => Math.sqrt(b.reduce((s, v) => s + v * v, 0) / b.length);
+  const noiseRms = rms(noiseOut.subarray(SR / 2)); // after the gate settles
+  const toneOut = run(kernel, sine(() => 220, 1));
+  const toneRms = rms(toneOut.subarray(SR / 2));
+  check(
+    "g  gate eats hiss, passes the voice",
+    noiseRms < 1e-4 && toneRms > 0.15,
+    `noise rms ${noiseRms.toExponential(2)}, tone rms ${toneRms.toFixed(3)}`,
+  );
+}
+
+// ------------------------------------------------------------- (h) warble
+{
+  const kernel = new HardtuneKernel(SR);
+  kernel.setGlide(0);
+  kernel.setWarble(5, 60);
+  const out = run(kernel, sine(() => 220, 3)); // A3: base snap ratio ~1
+  const track = pitchTrack(out).filter((p) => p.at > SR * 0.5);
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const p of track) {
+    const midi = hzToMidi(p.hz);
+    if (midi < lo) lo = midi;
+    if (midi > hi) hi = midi;
+  }
+  const range = (hi - lo) * 100;
+  // 60-cent depth = 120 cents peak-to-peak; the tracker's 43 ms window
+  // averages some of it away, so accept a broad band around that.
+  check("h  warble modulates the output pitch", track.length > 20 && range > 50 && range < 250, `${track.length} frames, pitch range ${range.toFixed(0)} cents`);
+}
+
 // ------------------------- (f) worklet source round-trips through eval
 // The browser evaluates PROCESSOR_SOURCE (built from HardtuneKernel.toString())
 // in a scope with no module helpers. Stub the worklet globals and run the

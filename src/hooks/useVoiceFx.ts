@@ -29,6 +29,10 @@ function paramsFrom(preset: Preset): AdvancedParams {
     downsampleFactor: preset.downsampleFactor,
     highpassHz: preset.highpassHz,
     lowpassHz: preset.lowpassHz,
+    presenceDb: preset.presenceDb,
+    gateDb: preset.gateDb,
+    warbleHz: preset.warbleHz,
+    warbleCents: preset.warbleCents,
     masterGain: preset.masterGain,
   };
 }

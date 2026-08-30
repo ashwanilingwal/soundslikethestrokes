@@ -58,6 +58,10 @@ export interface AdvancedParams {
   downsampleFactor: number;
   highpassHz: number;
   lowpassHz: number;
+  presenceDb: number;
+  gateDb: number;
+  warbleHz: number;
+  warbleCents: number;
   masterGain: number;
 }
 
@@ -101,6 +105,13 @@ class HardtuneProcessor extends AudioWorkletProcessor {
         this.kernel.setCrush(
           m.bits !== undefined ? m.bits : this.kernel.bits,
           m.downsampleFactor !== undefined ? m.downsampleFactor : this.kernel.downsampleFactor,
+        );
+      }
+      if (m.gateThreshold !== undefined) this.kernel.setGate(m.gateThreshold);
+      if (m.warbleHz !== undefined || m.warbleCents !== undefined) {
+        this.kernel.setWarble(
+          m.warbleHz !== undefined ? m.warbleHz : this.kernel.warbleHz,
+          m.warbleCents !== undefined ? m.warbleCents : this.kernel.warbleCents,
         );
       }
     };
@@ -166,7 +177,7 @@ export interface EffectChain {
   /** Feed the signal in here. */
   input: AudioNode;
   /** Post-limiter, pre-destination. Callers decide where it goes. */
-  output: GainNode;
+  output: AudioNode;
   analyser: AnalyserNode;
   recorderStream: MediaStream;
   applyPreset(preset: Preset): void;
@@ -196,8 +207,17 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
   const lowpass = ctx.createBiquadFilter();
   lowpass.type = "lowpass";
 
-  // StrumLab's master-bus limiter, verbatim: the safety net that lets the
-  // waveshaper be driven hard without the output ever slamming the DAC.
+  // The shouty megaphone mid bump. 1.8 kHz is where a voice's bite lives.
+  const presence = ctx.createBiquadFilter();
+  presence.type = "peaking";
+  presence.frequency.value = 1800;
+  presence.Q.value = 0.9;
+
+  const master = ctx.createGain();
+
+  // StrumLab's master-bus limiter, verbatim - but LAST in the chain, after
+  // the master gain, so "output" can boost past unity and the limiter still
+  // catches it before the DAC.
   const limiter = ctx.createDynamicsCompressor();
   limiter.threshold.value = -3;
   limiter.knee.value = 3;
@@ -205,16 +225,14 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
   limiter.attack.value = 0.001;
   limiter.release.value = 0.08;
 
-  const master = ctx.createGain();
-
   const analyser = ctx.createAnalyser();
   analyser.fftSize = 2048;
 
   const recorderDest = ctx.createMediaStreamDestination();
 
-  hardtune.connect(shaper).connect(highpass).connect(lowpass).connect(limiter).connect(master);
-  master.connect(analyser);
-  master.connect(recorderDest);
+  hardtune.connect(shaper).connect(highpass).connect(presence).connect(lowpass).connect(master).connect(limiter);
+  limiter.connect(analyser);
+  limiter.connect(recorderDest);
 
   let telemetryCb: ((t: Telemetry) => void) | null = null;
   hardtune.port.onmessage = (e: MessageEvent<Telemetry>) => telemetryCb?.(e.data);
@@ -234,9 +252,17 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
     if (p.drive !== undefined) shaper.curve = shaperCurve(p.drive);
     if (p.highpassHz !== undefined) ramp(highpass.frequency, p.highpassHz);
     if (p.lowpassHz !== undefined) ramp(lowpass.frequency, p.lowpassHz);
+    if (p.presenceDb !== undefined) ramp(presence.gain, p.presenceDb);
     if (p.masterGain !== undefined) ramp(master.gain, p.masterGain);
     if (p.bits !== undefined || p.downsampleFactor !== undefined) {
       hardtune.port.postMessage({ bits: p.bits, downsampleFactor: p.downsampleFactor });
+    }
+    if (p.gateDb !== undefined) {
+      // The slider's floor doubles as "off".
+      hardtune.port.postMessage({ gateThreshold: p.gateDb <= -74 ? 0 : Math.pow(10, p.gateDb / 20) });
+    }
+    if (p.warbleHz !== undefined || p.warbleCents !== undefined) {
+      hardtune.port.postMessage({ warbleHz: p.warbleHz, warbleCents: p.warbleCents });
     }
   };
 
@@ -250,6 +276,10 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
       downsampleFactor: next.downsampleFactor,
       highpassHz: next.highpassHz,
       lowpassHz: next.lowpassHz,
+      presenceDb: next.presenceDb,
+      gateDb: next.gateDb,
+      warbleHz: next.warbleHz,
+      warbleCents: next.warbleCents,
       masterGain: next.masterGain,
     });
   };
@@ -257,12 +287,13 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
   // Filters need sane initial values before the first ramp targets land.
   highpass.frequency.value = preset.highpassHz;
   lowpass.frequency.value = preset.lowpassHz;
+  presence.gain.value = preset.presenceDb;
   master.gain.value = preset.masterGain;
   applyPreset(preset);
 
   return {
     input: hardtune,
-    output: master,
+    output: limiter,
     analyser,
     recorderStream: recorderDest.stream,
     applyPreset,
@@ -280,9 +311,10 @@ export function buildEffectChain(ctx: AudioContext, preset: Preset): EffectChain
         hardtune.disconnect();
         shaper.disconnect();
         highpass.disconnect();
+        presence.disconnect();
         lowpass.disconnect();
-        limiter.disconnect();
         master.disconnect();
+        limiter.disconnect();
       } catch {
         // Already torn down.
       }
