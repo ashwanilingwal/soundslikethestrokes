@@ -389,6 +389,54 @@ body {
   overflow: hidden;
 }
 
+/* --- consent bar -----------------------------------------------------------
+   Fixed, so it never enters the flow and cannot break the one-screen layout.
+   z-index sits above the monitor modal: on a first visit both appear, and
+   this is the one that has to be answerable. */
+
+.consent-bar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 60;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: rgba(13, 11, 9, 0.96);
+  backdrop-filter: blur(8px);
+}
+
+.consent-copy {
+  flex: 1 1 260px;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--fg-muted);
+}
+
+.consent-actions {
+  display: flex;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+
+/* Withdrawing has to be as easy as consenting, so this lives in the footer
+   permanently rather than behind a policy page. */
+.consent-reopen {
+  border: none;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.consent-reopen:hover { color: var(--fg-muted); }
+
 /* --- chips ---------------------------------------------------------------- */
 
 .chip {

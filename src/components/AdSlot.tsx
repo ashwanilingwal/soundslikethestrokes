@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { ADSENSE_CLIENT, ADSENSE_SLOT, adSlotReady } from "@/lib/ads";
+import { useConsent } from "./ConsentProvider";
 
 declare global {
   interface Window {
@@ -21,10 +22,13 @@ declare global {
  * Renders nothing at all when no publisher id is configured.
  */
 export function AdSlot() {
+  const { granted } = useConsent();
   const pushed = useRef(false);
 
   useEffect(() => {
-    if (!adSlotReady || pushed.current) return;
+    // Wait for consent as well: pushing before the script exists would queue
+    // a fill request the visitor never agreed to.
+    if (!adSlotReady || !granted || pushed.current) return;
     // React 18/19 double-invokes effects in dev; pushing twice for one <ins>
     // makes AdSense log "All ins elements already have ads in them".
     pushed.current = true;
@@ -33,11 +37,12 @@ export function AdSlot() {
     } catch {
       // An ad blocker, or the script never loaded. Not worth surfacing.
     }
-  }, []);
+  }, [granted]);
 
-  // Renders nothing until BOTH ids exist. An <ins> with an empty data-ad-slot
-  // is not a smaller ad, it is a broken one that AdSense logs errors about.
-  if (!adSlotReady) return null;
+  // Renders nothing until BOTH ids exist and consent is given. An <ins> with
+  // an empty data-ad-slot is not a smaller ad, it is a broken one that
+  // AdSense logs errors about.
+  if (!adSlotReady || !granted) return null;
 
   return (
     <aside className="ad-slot" aria-label="advertisement">
