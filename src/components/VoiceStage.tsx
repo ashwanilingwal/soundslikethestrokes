@@ -2,6 +2,7 @@
 
 import { useRecorder } from "@/hooks/useRecorder";
 import { useVoiceFx } from "@/hooks/useVoiceFx";
+import { artistShort } from "@/lib/audio/voices";
 import { AdSlot } from "./AdSlot";
 import { AdvancedPanel } from "./AdvancedPanel";
 import { useConsent } from "./ConsentProvider";
@@ -90,7 +91,7 @@ export function VoiceStage() {
               match={fx.macros.match}
               robot={fx.macros.robot}
               volume={fx.macros.volume}
-              voiceLabel={fx.voice.label}
+              voiceLabel={artistShort(fx.voice)}
               onChange={fx.setMacro}
             />
             <RecorderBar

@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Album-art masters: the resized set in public/album-art is what ships.
+/src/album-art

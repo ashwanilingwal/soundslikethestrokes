@@ -486,6 +486,20 @@ export function albumLabel(voice: Voice): string {
   return voice.category === "auto" ? artistName(voice.artist) : voice.era;
 }
 
+/**
+ * What goes on the record's centre label: the album, without the year. The
+ * disc is showing that sleeve, so naming it "Julian I" wasted the one place
+ * a record traditionally tells you what it is.
+ */
+export function discLabel(voice: Voice): string {
+  return voice.category === "auto" ? artistName(voice.artist) : voice.era.split(" · ")[0];
+}
+
+/** "Julian", "Alex", "Posty" — for prose like "How much Julian". */
+export function artistShort(voice: Voice): string {
+  return voice.label.split(" ")[0];
+}
+
 /** The small print under a button: the year, or "auto". */
 export function yearLabel(voice: Voice): string {
   return voice.category === "auto" ? "auto" : (voice.era.split(" · ")[1] ?? "");

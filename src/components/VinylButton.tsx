@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 import type { VoiceStatus } from "@/hooks/useVoiceFx";
-import type { Voice } from "@/lib/audio/voices";
+import { discLabel, type Voice } from "@/lib/audio/voices";
 import { LabelArt } from "./LabelArt";
 
 /**
@@ -62,7 +62,7 @@ export function VinylButton({
           <span className="vinyl-grooves" aria-hidden />
           <span className="vinyl-label">
             <span className="vinyl-label-text">{active ? activeLabel : opening ? "…" : idleLabel}</span>
-            <span className="vinyl-label-sub">{voice.label}</span>
+            <span className="vinyl-label-sub">{discLabel(voice)}</span>
           </span>
           <span className="vinyl-hole" />
         </span>
