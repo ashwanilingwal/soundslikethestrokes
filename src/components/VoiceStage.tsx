@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRecorder } from "@/hooks/useRecorder";
 import { useVoiceFx } from "@/hooks/useVoiceFx";
 import { artistShort } from "@/lib/audio/voices";
@@ -78,6 +79,9 @@ export function VoiceStage() {
             <h1 className="stage-title wordmark min-w-0 flex-1 truncate text-[clamp(0.85rem,3.6vw,1.4rem)]">
               soundslikethestrokes
             </h1>
+            <Link href="/guide" className="guide-link" title="What every control does">
+              guide
+            </Link>
             {fx.monitor && <MonitorBadge value={fx.monitor} onChange={fx.selectMonitor} />}
           </header>
 
