@@ -637,8 +637,14 @@ details[open] > summary::before { content: "▾ "; }
    Shrink the platter and tighten gaps rather than growing a scrollbar. */
 
 @media (max-height: 720px) {
-  .stage { gap: 5px; padding: 5px 9px 8px; }
-  .win, .stage-window { gap: 5px; padding: 6px; }
+  /* Three stacked button rows now (source, category, voice), so their
+     padding is the cheapest thing to reclaim before the platter shrinks. */
+  .seg { padding: 3px 8px; }
+  .seg-year { font-size: 10px; }
+  .stage { gap: 5px; padding: 4px 8px 6px; }
+  .win-title { padding: 3px 8px; }
+  .macro-card { gap: 3px; }
+  .win, .stage-window { gap: 5px; padding: 5px; }
   .stage-grid { gap: 6px; }
   .vinyl-btn { width: clamp(94px, 24vw, 130px); }
   .card { padding-block: 4px; }
@@ -653,8 +659,8 @@ details[open] > summary::before { content: "▾ "; }
 /* The deck's header strip and padding cost ~25px more than the flat skin did,
    which a 640px-tall phone cannot absorb. Buy it back from the platter and
    the description, in that order — neither is needed to operate anything. */
-@media (max-height: 665px) {
-  .vinyl-btn { width: clamp(80px, 21vw, 112px); }
+@media (max-height: 700px) {
+  .vinyl-btn { width: clamp(74px, 19vw, 100px); }
   .voice-varies { -webkit-line-clamp: 1; }
 }
 

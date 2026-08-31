@@ -16,17 +16,22 @@ export function VinylButton({
   message,
   voice,
   disabled,
-  onStart,
-  onStop,
+  active,
+  idleLabel,
+  activeLabel,
+  onClick,
 }: {
   status: VoiceStatus;
   message: string | null;
   voice: Voice;
   disabled: boolean;
-  onStart: () => void;
-  onStop: () => void;
+  /** Spinning and showing the stop face. For a file this is "playing", which
+   *  is not the same as "the graph exists" - a paused file is still loaded. */
+  active: boolean;
+  idleLabel: string;
+  activeLabel: string;
+  onClick: () => void;
 }) {
-  const live = status === "live";
   const opening = status === "opening";
 
   const artStyle = {
@@ -40,16 +45,16 @@ export function VinylButton({
         type="button"
         className="vinyl-btn"
         disabled={disabled || opening}
-        onClick={live ? onStop : onStart}
-        aria-pressed={live}
-        aria-label={live ? "stop" : "go live"}
+        onClick={onClick}
+        aria-pressed={active}
+        aria-label={active ? activeLabel : idleLabel}
         style={artStyle}
       >
-        <span className={`vinyl-disc ${live ? "vinyl-spin" : ""}`}>
+        <span className={`vinyl-disc ${active ? "vinyl-spin" : ""}`}>
           <LabelArt art={voice.art} className="vinyl-art" />
           <span className="vinyl-grooves" aria-hidden />
           <span className="vinyl-label">
-            <span className="vinyl-label-text">{live ? "STOP" : opening ? "…" : "PLAY"}</span>
+            <span className="vinyl-label-text">{active ? activeLabel : opening ? "…" : idleLabel}</span>
             <span className="vinyl-label-sub">{voice.label}</span>
           </span>
           <span className="vinyl-hole" />
@@ -60,7 +65,9 @@ export function VinylButton({
       {status === "error" && message ? (
         <p className="max-w-[16rem] text-center text-xs text-accent-soft">{message}</p>
       ) : (
-        <p className="caps text-fg-dim">{live ? "on air" : opening ? "opening mic" : "not recording"}</p>
+        <p className="caps text-fg-dim">
+          {active ? "on air" : opening ? "starting" : status === "live" ? "paused" : "not recording"}
+        </p>
       )}
     </div>
   );

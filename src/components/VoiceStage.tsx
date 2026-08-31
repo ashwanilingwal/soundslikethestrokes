@@ -7,6 +7,7 @@ import { AdvancedPanel } from "./AdvancedPanel";
 import { useConsent } from "./ConsentProvider";
 import { MacroBars } from "./MacroBars";
 import { MonitorBadge } from "./MonitorBadge";
+import { SourceBar } from "./SourceBar";
 import { MonitorModal } from "./MonitorModal";
 import { PitchReadout } from "./PitchReadout";
 import { RecorderBar } from "./RecorderBar";
@@ -23,6 +24,21 @@ export function VoiceStage() {
   const fx = useVoiceFx();
   const recorder = useRecorder(fx.recorderStream);
   const consent = useConsent();
+
+  const isFile = fx.source === "file";
+  const graphUp = fx.status === "live";
+  // A file needs a picked file before it can start; the mic needs the monitor
+  // question answered, because that decides how the mic is opened.
+  const blocked = isFile ? !fx.file : fx.monitor === null;
+  // For a file, "active" means audibly playing - a paused file still holds a
+  // decoded buffer and a live graph.
+  const active = isFile ? fx.filePlaying : graphUp;
+
+  const onTransport = () => {
+    if (isFile && graphUp) fx.toggleTransport();
+    else if (graphUp) fx.stop();
+    else void fx.start();
+  };
 
   return (
     <>
@@ -52,13 +68,22 @@ export function VoiceStage() {
               status={fx.status}
               message={fx.message}
               voice={fx.voice}
-              disabled={fx.monitor === null}
-              onStart={() => void fx.start()}
-              onStop={fx.stop}
+              disabled={blocked}
+              active={active}
+              idleLabel={isFile ? "PLAY" : "GO LIVE"}
+              activeLabel={isFile ? "PAUSE" : "STOP"}
+              onClick={onTransport}
             />
           </section>
 
           <section className="flex min-w-0 flex-col gap-2">
+            <SourceBar
+              source={fx.source}
+              fileName={fx.fileName}
+              fileDuration={fx.fileDuration}
+              onSource={fx.selectSource}
+              onFile={fx.pickFile}
+            />
             <VoicePicker voice={fx.voice} onSelect={fx.selectVoice} />
             <PitchReadout telemetry={fx.telemetry} live={fx.status === "live"} />
             <MacroBars
@@ -85,6 +110,12 @@ export function VoiceStage() {
             scale={fx.scale}
             hasOverrides={fx.hasOverrides}
             noiseCancellation={fx.noiseCancellation}
+            devices={fx.devices}
+            inputDeviceId={fx.inputDeviceId}
+            outputDeviceId={fx.outputDeviceId}
+            canChooseOutput={fx.canChooseOutput}
+            onInputDevice={fx.selectInputDevice}
+            onOutputDevice={fx.selectOutputDevice}
             onOverride={fx.overrideParam}
             onCleanup={fx.setCleanupParam}
             onScale={fx.selectScale}

@@ -70,7 +70,26 @@ export interface VoiceGraph {
    * the browser won't change it in place, so the caller can restart instead.
    */
   setNoiseCancellation(on: boolean): Promise<boolean>;
+  /**
+   * Route playback to a chosen output device. Resolves false where the
+   * browser has no setSinkId (everything outside Chromium today).
+   */
+  setOutputDevice(deviceId: string): Promise<boolean>;
+  /** Transport for a file source; null when the source is the microphone. */
+  file: FileTransport | null;
   stop(): void;
+}
+
+/** Play control for a decoded file being fed through the chain. */
+export interface FileTransport {
+  /** Seconds. */
+  duration: number;
+  play(): void;
+  pause(): void;
+  playing(): boolean;
+  /** Current position in seconds. */
+  position(): number;
+  onEnded(cb: (() => void) | null): void;
 }
 
 /**
@@ -387,6 +406,27 @@ export interface CaptureOptions {
    * StrumLab keeps it off is that it eats sustained guitar notes.
    */
   noiseCancellation: boolean;
+  /** Specific microphone, from lib/audio/devices. Omit for the default. */
+  inputDeviceId?: string;
+  /** Specific output, applied via setSinkId where supported. */
+  outputDeviceId?: string;
+}
+
+/**
+ * Chromium-only, and typed by hand because setSinkId is not in lib.dom yet.
+ * An empty id means "system default", which is also the reset path.
+ */
+type SinkCapableContext = AudioContext & { setSinkId?: (id: string) => Promise<void> };
+
+async function routeOutput(ctx: AudioContext, deviceId: string): Promise<boolean> {
+  const sink = (ctx as SinkCapableContext).setSinkId;
+  if (typeof sink !== "function") return false;
+  try {
+    await sink.call(ctx, deviceId);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function startVoiceGraph(
@@ -410,6 +450,7 @@ export async function startVoiceGraph(
         // makes both the gate's learned floor and the tuning unstable.
         autoGainControl: false,
         channelCount: 1,
+        ...(capture.inputDeviceId ? { deviceId: { exact: capture.inputDeviceId } } : {}),
       },
     });
   } catch (err) {
@@ -438,6 +479,8 @@ export async function startVoiceGraph(
     setParams: chain.setParams,
     setScaleMask: chain.setScaleMask,
     onTelemetry: chain.onTelemetry,
+    file: null,
+    setOutputDevice: (deviceId: string) => routeOutput(ctx, deviceId),
     async setNoiseCancellation(on: boolean) {
       const track = stream.getAudioTracks()[0];
       if (!track) return false;
@@ -462,6 +505,124 @@ export async function startVoiceGraph(
       }
       chain.disconnect();
       stream.getTracks().forEach((t) => t.stop());
+      void ctx.close();
+    },
+  };
+}
+
+/**
+ * Feed a decoded audio file through the same chain instead of the microphone.
+ *
+ * Nothing is uploaded: decodeAudioData runs on bytes already in the page, and
+ * the file never leaves the browser - same promise the mic path makes.
+ *
+ * Two details that are easy to get wrong:
+ *
+ * 1. The worklet reads channel 0 only, so a stereo file would silently lose
+ *    its right side. A gain node with an explicit mono channelCount performs
+ *    a proper downmix first.
+ * 2. AudioBufferSourceNode is one-shot - it cannot be restarted after stop().
+ *    Pause therefore records an offset and throws the node away, and play
+ *    builds a fresh one from that offset.
+ */
+export async function startFileGraph(
+  initial: AdvancedParams,
+  file: File,
+  opts: { outputDeviceId?: string } = {},
+): Promise<VoiceGraph> {
+  const ctx = await createContext();
+
+  let buffer: AudioBuffer;
+  try {
+    buffer = await ctx.decodeAudioData(await file.arrayBuffer());
+  } catch {
+    void ctx.close();
+    throw new MicError(
+      "unavailable",
+      `${file.name || "That file"} couldn't be decoded. Try MP3, WAV, M4A, FLAC or OGG — some codecs vary by browser.`,
+    );
+  }
+
+  await loadHardtuneModule(ctx);
+
+  const chain = buildEffectChain(ctx, initial);
+  const mono = ctx.createGain();
+  mono.channelCount = 1;
+  mono.channelCountMode = "explicit";
+  mono.channelInterpretation = "speakers";
+  mono.connect(chain.input);
+  chain.output.connect(ctx.destination);
+
+  if (opts.outputDeviceId) await routeOutput(ctx, opts.outputDeviceId);
+
+  let node: AudioBufferSourceNode | null = null;
+  let startedAt = 0;
+  let offset = 0;
+  let isPlaying = false;
+  let endedCb: (() => void) | null = null;
+
+  const transport: FileTransport = {
+    duration: buffer.duration,
+    playing: () => isPlaying,
+    position: () => (isPlaying ? Math.min(buffer.duration, offset + (ctx.currentTime - startedAt)) : offset),
+    onEnded(cb) {
+      endedCb = cb;
+    },
+    play() {
+      if (isPlaying) return;
+      if (offset >= buffer.duration) offset = 0;
+      node = ctx.createBufferSource();
+      node.buffer = buffer;
+      node.connect(mono);
+      node.onended = () => {
+        // stop() also fires this, so only treat it as the end of the take
+        // when we did not ask for it - pause() clears the handler first.
+        if (!isPlaying) return;
+        isPlaying = false;
+        offset = 0;
+        endedCb?.();
+      };
+      node.start(0, offset);
+      startedAt = ctx.currentTime;
+      isPlaying = true;
+    },
+    pause() {
+      if (!isPlaying || !node) return;
+      offset = Math.min(buffer.duration, offset + (ctx.currentTime - startedAt));
+      isPlaying = false;
+      node.onended = null;
+      try {
+        node.stop();
+        node.disconnect();
+      } catch {
+        // Already finished.
+      }
+      node = null;
+    },
+  };
+
+  return {
+    context: ctx,
+    analyser: chain.analyser,
+    recorderStream: chain.recorderStream,
+    setParams: chain.setParams,
+    setScaleMask: chain.setScaleMask,
+    onTelemetry: chain.onTelemetry,
+    file: transport,
+    setOutputDevice: (deviceId: string) => routeOutput(ctx, deviceId),
+    // No capture track exists on this path, so there is nothing to retune.
+    async setNoiseCancellation() {
+      return true;
+    },
+    stop() {
+      endedCb = null;
+      transport.pause();
+      try {
+        mono.disconnect();
+      } catch {
+        // Already torn down.
+      }
+      chain.disconnect();
       void ctx.close();
     },
   };

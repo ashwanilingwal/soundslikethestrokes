@@ -1,6 +1,7 @@
 "use client";
 
 import type { AdvancedParams } from "@/lib/audio/graph";
+import type { AudioDevice } from "@/lib/audio/devices";
 import type { VoiceParams } from "@/lib/audio/voices";
 import { NOTE_NAMES, type ScaleChoice } from "@/lib/dsp/scales";
 
@@ -52,6 +53,12 @@ export function AdvancedPanel({
   scale,
   hasOverrides,
   noiseCancellation,
+  devices,
+  inputDeviceId,
+  outputDeviceId,
+  canChooseOutput,
+  onInputDevice,
+  onOutputDevice,
   onOverride,
   onCleanup,
   onScale,
@@ -63,6 +70,12 @@ export function AdvancedPanel({
   scale: ScaleChoice;
   hasOverrides: boolean;
   noiseCancellation: boolean;
+  devices: { inputs: AudioDevice[]; outputs: AudioDevice[] };
+  inputDeviceId: string;
+  outputDeviceId: string;
+  canChooseOutput: boolean;
+  onInputDevice: (id: string) => void;
+  onOutputDevice: (id: string) => void;
   onOverride: (patch: Partial<VoiceParams>) => void;
   onCleanup: (patch: Partial<{ gateDb: number; denoise: number }>) => void;
   onScale: (choice: ScaleChoice) => void;
@@ -76,6 +89,50 @@ export function AdvancedPanel({
       <summary className="caps cursor-pointer select-none text-fg-muted">fine tuning</summary>
 
       <div className="mt-4 flex flex-col gap-5">
+        <section className="flex flex-col gap-3">
+          <h3 className="caps text-accent-soft">in / out</h3>
+          <p className="text-[11px] leading-snug text-fg-dim">
+            A dedicated microphone into headphones is the quietest path: it keeps the capsule away from your laptop&apos;s
+            fans and out of the speakers, so there is less for the gate to remove in the first place.
+          </p>
+          <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-fg-muted">microphone</span>
+              <select value={inputDeviceId} onChange={(e) => onInputDevice(e.target.value)}>
+                <option value="">System default</option>
+                {devices.inputs.map((d) => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+              {devices.inputs.length === 0 && (
+                <span className="text-[10px] text-fg-dim">Names appear once you have allowed the mic once.</span>
+              )}
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-fg-muted">output</span>
+              <select
+                value={outputDeviceId}
+                disabled={!canChooseOutput}
+                onChange={(e) => onOutputDevice(e.target.value)}
+              >
+                <option value="">System default</option>
+                {devices.outputs.map((d) => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+              {!canChooseOutput && (
+                <span className="text-[10px] text-fg-dim">
+                  This browser can&apos;t pick an output — choose it in your system settings.
+                </span>
+              )}
+            </label>
+          </div>
+        </section>
+
         <section className="flex flex-col gap-3">
           <h3 className="caps text-accent-soft">clean-up</h3>
           <label className="flex cursor-pointer items-start gap-3">

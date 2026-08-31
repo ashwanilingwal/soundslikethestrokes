@@ -48,7 +48,7 @@ export function MonitorModal({ onChoose }: { onChoose: (m: MonitorMode) => void 
               🎧
             </span>
             <span>
-              <span className="block font-bold">Headphones</span>
+              <span className="block font-bold">Headphones — recommended</span>
               <span className="mt-0.5 block text-sm text-fg-muted">
                 Recommended. Nothing touches your voice, and latency is lowest. Wired beats Bluetooth, which adds
                 100–300&nbsp;ms.
