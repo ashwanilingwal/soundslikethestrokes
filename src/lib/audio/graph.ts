@@ -48,6 +48,10 @@ export interface Telemetry {
   midi: number;
   targetMidi: number;
   rms: number;
+  /** 0..1 while measuring the room, 1 when idle. */
+  learnProgress: number;
+  /** True once a room print exists and can be subtracted. */
+  hasNoiseProfile: boolean;
 }
 
 /**
@@ -65,6 +69,10 @@ export interface VoiceGraph {
   setParams(params: Partial<AdvancedParams>): void;
   setScaleMask(mask: number[]): void;
   onTelemetry(cb: ((t: Telemetry) => void) | null): void;
+  /** Measure the room for `seconds`. The user must be silent throughout. */
+  learnNoise(seconds: number): void;
+  /** Throw the measured room away; the stage goes inert until re-measured. */
+  clearNoiseProfile(): void;
   /**
    * Retune the live capture track's noise suppression. Resolves false when
    * the browser won't change it in place, so the caller can restart instead.
@@ -123,6 +131,9 @@ class HardtuneProcessor extends AudioWorkletProcessor {
         );
       }
       if (m.gateThreshold !== undefined) this.kernel.setGate(m.gateThreshold);
+      if (m.noiseReduction !== undefined) this.kernel.setNoiseReduction(m.noiseReduction);
+      if (m.learnNoise) this.kernel.learnNoise(m.learnNoise);
+      if (m.clearNoiseProfile) this.kernel.clearNoiseProfile();
       if (m.denoise !== undefined) this.kernel.setDenoise(m.denoise);
       if (m.semitoneShift !== undefined) this.kernel.setSemitoneShift(m.semitoneShift);
       if (m.warbleHz !== undefined || m.warbleCents !== undefined) {
@@ -147,6 +158,7 @@ class HardtuneProcessor extends AudioWorkletProcessor {
       this.port.postMessage({
         hz: k.lastHz, clarity: k.lastClarity, midi: k.lastMidi,
         targetMidi: k.lastTargetMidi, rms: k.lastRms,
+        learnProgress: k.lastLearnProgress, hasNoiseProfile: k.hasNoiseProfile,
       });
     }
     return true;
@@ -252,6 +264,8 @@ export interface EffectChain {
   setParams(params: Partial<AdvancedParams>): void;
   setScaleMask(mask: number[]): void;
   onTelemetry(cb: ((t: Telemetry) => void) | null): void;
+  learnNoise(seconds: number): void;
+  clearNoiseProfile(): void;
   disconnect(): void;
 }
 
@@ -388,6 +402,7 @@ export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): Ef
       hardtune.port.postMessage({ warbleHz: p.warbleHz, warbleCents: p.warbleCents });
     }
     if (p.denoise !== undefined) hardtune.port.postMessage({ denoise: p.denoise });
+    if (p.noiseReduction !== undefined) hardtune.port.postMessage({ noiseReduction: p.noiseReduction });
     if (p.semitoneShift !== undefined) hardtune.port.postMessage({ semitoneShift: p.semitoneShift });
   };
 
@@ -411,6 +426,12 @@ export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): Ef
     setParams,
     setScaleMask(mask: number[]) {
       hardtune.port.postMessage({ scaleMask: mask });
+    },
+    learnNoise(seconds: number) {
+      hardtune.port.postMessage({ learnNoise: seconds });
+    },
+    clearNoiseProfile() {
+      hardtune.port.postMessage({ clearNoiseProfile: true });
     },
     onTelemetry(cb) {
       telemetryCb = cb;
@@ -525,6 +546,8 @@ export async function startVoiceGraph(
     setParams: chain.setParams,
     setScaleMask: chain.setScaleMask,
     onTelemetry: chain.onTelemetry,
+    learnNoise: chain.learnNoise,
+    clearNoiseProfile: chain.clearNoiseProfile,
     file: null,
     setOutputDevice: (deviceId: string) => routeOutput(ctx, deviceId),
     async setNoiseCancellation(on: boolean) {
@@ -654,6 +677,8 @@ export async function startFileGraph(
     setParams: chain.setParams,
     setScaleMask: chain.setScaleMask,
     onTelemetry: chain.onTelemetry,
+    learnNoise: chain.learnNoise,
+    clearNoiseProfile: chain.clearNoiseProfile,
     file: transport,
     setOutputDevice: (deviceId: string) => routeOutput(ctx, deviceId),
     // No capture track exists on this path, so there is nothing to retune.

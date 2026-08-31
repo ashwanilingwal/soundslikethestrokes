@@ -146,6 +146,15 @@ export const CONTROL_COPY: Record<string, ControlCopy> = {
     whatItDoes: "Balances the echoes against the direct voice. Low keeps them as a hint of depth behind you; high lets the repeats compete with the line you're singing now.",
     inTheWild: "Delay is normally kept well below the dry vocal so it registers as space rather than clutter, then pushed up only on the last word of a phrase where nothing else is in the way.",
   },
+  "noiseReduction": {
+    id: "noiseReduction",
+    label: "room removal / how much",
+    oneLiner: "How much of the measured room to subtract.",
+    whatItDoes:
+      "Sets how aggressively the measured room fingerprint is taken out of the signal. Low settings thin the hiss while leaving the voice completely untouched; high settings strip more but can start to sound watery, because bins that were mostly noise get pulled down alongside the quiet parts of your voice.",
+    inTheWild:
+      "Engineers back this off until the noise is merely quiet rather than gone. Pushing subtraction too far produces a burbling artefact called musical noise, and a slightly hissy vocal reads as more natural than a clean one that warbles.",
+  },
   "gateDb": {
     id: "gateDb",
     label: "noise gate / silence floor",

@@ -296,7 +296,7 @@ function sine(hzAt: (t: number) => number, seconds: number, amp = 0.4): Float32A
   for (const voice of VOICES) {
     for (const match of [0, 0.5, 1]) {
       for (const robot of [0, 1]) {
-        const p = resolveParams(voice, { match, robot, volume: 1, gateDb: -50, denoise: 0.7 }) as unknown as Record<string, number>;
+        const p = resolveParams(voice, { match, robot, volume: 1, gateDb: -50, denoise: 0.7, noiseReduction: 0 }) as unknown as Record<string, number>;
         for (const [key, [lo, hi]] of Object.entries(RANGES)) {
           const v = p[key];
           if (!Number.isFinite(v) || v < lo || v > hi) {
@@ -313,7 +313,7 @@ function sine(hzAt: (t: number) => number, seconds: number, amp = 0.4): Float32A
 {
   const auto = VOICES.filter((v) => v.autotuned);
   const bad = auto.filter((v) => {
-    const p = resolveParams(v, { match: 1, robot: 0, volume: 1, gateDb: -50, denoise: 0.7 });
+    const p = resolveParams(v, { match: 1, robot: 0, volume: 1, gateDb: -50, denoise: 0.7, noiseReduction: 0 });
     return p.retuneGlideMs > 0.001 || p.dryWet < 0.999;
   });
   check(
@@ -356,7 +356,7 @@ function sine(hzAt: (t: number) => number, seconds: number, amp = 0.4): Float32A
   const original = {
     voiceId: voice.id,
     macros: { match: 0.42, robot: 0.15, volume: 1.35 },
-    cleanup: { gateDb: -47, denoise: 0.55 },
+    cleanup: { gateDb: -47, denoise: 0.55, noiseReduction: 0 },
     params: { drive: 7.5, roomMix: 0.42, echoMs: 190, echoFeedback: 0.31, echoMix: 0.24, semitoneShift: -2 },
   };
   const back = fromCsv(toCsv(original));
@@ -423,6 +423,60 @@ function sine(hzAt: (t: number) => number, seconds: number, amp = 0.4): Float32A
     if (v.presenceDb < 0 && v.lowpassHz < 5000) faults.push(`${v.id}: ${v.presenceDb}dB presence under a ${v.lowpassHz}Hz ceiling is muffled`);
   }
   check("p  every voice stays musically plausible", faults.length === 0, faults.length ? faults.slice(0, 3).join("; ") : `${VOICES.length} voices within bounds`);
+}
+
+// ---------------- (q) the room print removes the room, keeps the voice
+// The gate can only silence the gaps between words. A noise PRINT subtracts
+// the room's own spectrum continuously, including underneath speech - so the
+// test is not "is it quiet between words" but "is the noise gone while the
+// tone is still there".
+{
+  let seed = 987654321;
+  const rand = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff) * 2 - 1;
+  // Deterministic broadband hiss standing in for a room.
+  const noise = (n: number, amp = 0.02) => {
+    const b = new Float32Array(n);
+    for (let i = 0; i < n; i++) b[i] = amp * rand();
+    return b;
+  };
+  const rms = (b: Float32Array) => Math.sqrt(b.reduce((s, v) => s + v * v, 0) / b.length);
+
+  const make = () => {
+    const k = new HardtuneKernel(SR);
+    k.dryWet = 0;   // isolate the noise stage from the pitch shifter
+    k.setGate(0);   // and from the gate, or it would mask the result
+    k.setDenoise(0);
+    return k;
+  };
+
+  // Learn 1s of room, then measure another second of the SAME room.
+  const trained = make();
+  trained.setNoiseReduction(0.8);
+  trained.learnNoise(1);
+  run(trained, noise(SR));
+  const roomAfter = rms(run(trained, noise(SR)));
+
+  // Control: identical signal, no print taken.
+  const untrained = make();
+  const roomBefore = rms(run(untrained, noise(SR)));
+
+  const reductionDb = 20 * Math.log10(roomAfter / roomBefore);
+
+  // Now a voice on top of that room: the tone must survive.
+  const withVoice = new Float32Array(SR);
+  const tone = sine(() => 220, 1);
+  const bed = noise(SR);
+  for (let i = 0; i < SR; i++) withVoice[i] = tone[i] + bed[i];
+  const voiceOut = run(trained, withVoice);
+  const voiceRms = rms(voiceOut.subarray(SR / 2));
+  const detected = pitchTrack(voiceOut).filter((p) => p.at > SR * 0.4);
+  const median = detected.length ? detected.map((p) => p.hz).sort((a, b) => a - b)[detected.length >> 1] : 0;
+
+  check(
+    "q  room print cuts the room, voice survives",
+    reductionDb < -8 && voiceRms > 0.15 && Math.abs(median - 220) < 6,
+    `room ${reductionDb.toFixed(1)} dB, voice rms ${voiceRms.toFixed(3)}, pitch ${median.toFixed(1)} Hz`,
+  );
 }
 
 // ------------------------- (f) worklet source round-trips through eval

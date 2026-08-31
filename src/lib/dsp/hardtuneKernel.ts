@@ -64,6 +64,30 @@ export class HardtuneKernel {
   // -- transposition --
   semitoneShift: number;
 
+  // -- spectral noise print (STFT) --
+  nrFrame: number;
+  nrHop: number;
+  nrBins: number;
+  nrWindow: Float32Array;
+  nrIn: Float32Array;
+  nrHopBuf: Float32Array;
+  nrReady: Float32Array;
+  nrOut: Float32Array;
+  nrHopFill: number;
+  nrRe: Float32Array;
+  nrIm: Float32Array;
+  nrCos: Float32Array;
+  nrSin: Float32Array;
+  nrRev: Int32Array;
+  /** Per-bin magnitude of the room, measured while learning. */
+  nrProfile: Float32Array;
+  nrAccum: Float32Array;
+  nrLearnFrames: number;
+  nrLearnTarget: number;
+  /** 0 disables the whole stage; the STFT is then bypassed entirely. */
+  nrAmount: number;
+  hasNoiseProfile: boolean;
+
   // -- warble (pitch LFO) --
   warbleHz: number;
   warbleCents: number;
@@ -92,6 +116,8 @@ export class HardtuneKernel {
   lastMidi: number;
   lastTargetMidi: number;
   lastRms: number;
+  /** 0..1 while measuring the room, 1 when idle. */
+  lastLearnProgress: number;
 
   constructor(sampleRate: number) {
     this.sr = sampleRate;
@@ -166,11 +192,57 @@ export class HardtuneKernel {
     this.sinceVoiced = this.holdSamples;
     this.voiced = false;
 
+    /**
+     * STFT for the noise print. 512/128 is 4x overlap: enough frequency
+     * resolution (~94 Hz bins at 48k) to tell a fan from a vowel, while the
+     * hop matches the render quantum so a frame boundary never falls inside
+     * a block. Costs ~11 ms of extra latency, which is why the stage is
+     * bypassed outright when the amount is 0.
+     */
+    this.nrFrame = 512;
+    this.nrHop = 128;
+    this.nrBins = this.nrFrame / 2 + 1;
+    this.nrWindow = new Float32Array(this.nrFrame);
+    for (let i = 0; i < this.nrFrame; i++) {
+      // Periodic Hann. Applied on BOTH analysis and synthesis, so the squared
+      // window sums to a constant 1.5 at 4x overlap - that constant is the
+      // normalisation below, and getting it wrong makes the output pump.
+      this.nrWindow[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / this.nrFrame);
+    }
+    this.nrIn = new Float32Array(this.nrFrame);
+    this.nrHopBuf = new Float32Array(this.nrHop);
+    this.nrReady = new Float32Array(this.nrHop);
+    this.nrOut = new Float32Array(this.nrFrame);
+    this.nrHopFill = 0;
+    this.nrRe = new Float32Array(this.nrFrame);
+    this.nrIm = new Float32Array(this.nrFrame);
+    this.nrCos = new Float32Array(this.nrFrame / 2);
+    this.nrSin = new Float32Array(this.nrFrame / 2);
+    for (let i = 0; i < this.nrFrame / 2; i++) {
+      this.nrCos[i] = Math.cos((-2 * Math.PI * i) / this.nrFrame);
+      this.nrSin[i] = Math.sin((-2 * Math.PI * i) / this.nrFrame);
+    }
+    this.nrRev = new Int32Array(this.nrFrame);
+    let bits = 0;
+    while (1 << bits < this.nrFrame) bits++;
+    for (let i = 0; i < this.nrFrame; i++) {
+      let r = 0;
+      for (let b = 0; b < bits; b++) if (i & (1 << b)) r |= 1 << (bits - 1 - b);
+      this.nrRev[i] = r;
+    }
+    this.nrProfile = new Float32Array(this.nrBins);
+    this.nrAccum = new Float32Array(this.nrBins);
+    this.nrLearnFrames = 0;
+    this.nrLearnTarget = 0;
+    this.nrAmount = 0;
+    this.hasNoiseProfile = false;
+
     this.lastHz = 0;
     this.lastClarity = 0;
     this.lastMidi = 0;
     this.lastTargetMidi = 0;
     this.lastRms = 0;
+    this.lastLearnProgress = 1;
   }
 
   setGlide(ms: number): void {
@@ -213,6 +285,117 @@ export class HardtuneKernel {
    */
   setDenoise(strength: number): void {
     this.denoise = Math.min(1, Math.max(0, strength));
+  }
+
+  /**
+   * Start measuring the room. Call while the user is SILENT: every frame
+   * captured during the window is averaged into the per-bin profile, so any
+   * speech that sneaks in gets subtracted from the voice later.
+   */
+  learnNoise(seconds: number): void {
+    for (let i = 0; i < this.nrBins; i++) this.nrAccum[i] = 0;
+    this.nrLearnFrames = 0;
+    this.nrLearnTarget = Math.max(1, Math.round((seconds * this.sr) / this.nrHop));
+    this.hasNoiseProfile = false;
+  }
+
+  /** How much of the measured room to remove. 0 bypasses the STFT entirely. */
+  setNoiseReduction(amount: number): void {
+    this.nrAmount = Math.min(1, Math.max(0, amount));
+  }
+
+  /** Discard the print; the room stage goes inert until a new one is taken. */
+  clearNoiseProfile(): void {
+    this.hasNoiseProfile = false;
+    this.nrLearnTarget = 0;
+    for (let i = 0; i < this.nrBins; i++) this.nrProfile[i] = 0;
+  }
+
+  /** In-place iterative radix-2 FFT. sign -1 forward, +1 inverse. */
+  fft(re: Float32Array, im: Float32Array, sign: number): void {
+    const n = this.nrFrame;
+    const rev = this.nrRev;
+    for (let i = 0; i < n; i++) {
+      const j = rev[i];
+      if (j > i) {
+        let t = re[i]; re[i] = re[j]; re[j] = t;
+        t = im[i]; im[i] = im[j]; im[j] = t;
+      }
+    }
+    for (let size = 2; size <= n; size <<= 1) {
+      const half = size >> 1;
+      const step = n / size;
+      for (let i = 0; i < n; i += size) {
+        for (let j = i, k = 0; j < i + half; j++, k += step) {
+          const c = this.nrCos[k];
+          const sgn = sign * this.nrSin[k];
+          const tr = re[j + half] * c - im[j + half] * sgn;
+          const ti = re[j + half] * sgn + im[j + half] * c;
+          re[j + half] = re[j] - tr;
+          im[j + half] = im[j] - ti;
+          re[j] += tr;
+          im[j] += ti;
+        }
+      }
+    }
+  }
+
+  /**
+   * One STFT hop: window, transform, subtract the room, transform back,
+   * overlap-add. Called once per nrHop input samples.
+   */
+  nrProcessFrame(): void {
+    const N = this.nrFrame;
+    const H = this.nrHop;
+
+    this.nrIn.copyWithin(0, H);
+    this.nrIn.set(this.nrHopBuf, N - H);
+
+    for (let i = 0; i < N; i++) {
+      this.nrRe[i] = this.nrIn[i] * this.nrWindow[i];
+      this.nrIm[i] = 0;
+    }
+    this.fft(this.nrRe, this.nrIm, -1);
+
+    if (this.nrLearnFrames < this.nrLearnTarget) {
+      for (let b = 0; b < this.nrBins; b++) {
+        this.nrAccum[b] += Math.sqrt(this.nrRe[b] * this.nrRe[b] + this.nrIm[b] * this.nrIm[b]);
+      }
+      if (++this.nrLearnFrames >= this.nrLearnTarget) {
+        for (let b = 0; b < this.nrBins; b++) this.nrProfile[b] = this.nrAccum[b] / this.nrLearnTarget;
+        this.hasNoiseProfile = true;
+      }
+    } else if (this.hasNoiseProfile && this.nrAmount > 0) {
+      // Over-subtract (alpha > 1) because a mean underestimates the peaks,
+      // but keep a spectral floor: driving a bin to zero is what produces
+      // "musical noise", the burbling of isolated surviving bins.
+      const alpha = 1 + 2 * this.nrAmount;
+      const floor = 0.06 + 0.14 * (1 - this.nrAmount);
+      for (let b = 0; b < this.nrBins; b++) {
+        const re = this.nrRe[b];
+        const im = this.nrIm[b];
+        const mag = Math.sqrt(re * re + im * im);
+        if (mag < 1e-12) continue;
+        const keep = Math.max(mag - alpha * this.nrProfile[b], floor * mag) / mag;
+        this.nrRe[b] = re * keep;
+        this.nrIm[b] = im * keep;
+        // Mirror the change onto the conjugate half so the inverse stays real.
+        if (b > 0 && b < N - b) {
+          this.nrRe[N - b] = this.nrRe[b];
+          this.nrIm[N - b] = -this.nrIm[b];
+        }
+      }
+    }
+
+    this.fft(this.nrRe, this.nrIm, 1);
+
+    // 1/N from the inverse, /1.5 for the summed squared Hann at 4x overlap.
+    const norm = 1 / (N * 1.5);
+    for (let i = 0; i < N; i++) this.nrOut[i] += this.nrRe[i] * this.nrWindow[i] * norm;
+
+    this.nrReady.set(this.nrOut.subarray(0, H));
+    this.nrOut.copyWithin(0, H);
+    this.nrOut.fill(0, N - H);
   }
 
   /** Transpose the snapped target, in semitones. Negative = lower voice. */
@@ -325,12 +508,39 @@ export class HardtuneKernel {
     const quant = Math.pow(2, this.bits - 1);
     let ranDetect = false;
     let rmsAcc = 0;
+    // Hoisted out of the loop: a per-sample branch on three fields is real
+    // cost in a worklet, and this cannot change mid-block.
+    const nrActive = this.nrAmount > 0 || this.nrLearnFrames < this.nrLearnTarget;
 
     for (let i = 0; i < n; i++) {
-      const x = input[i];
-      rmsAcc += x * x;
+      const raw = input[i];
+      // The meter reads the RAW input, so the level bar keeps moving while
+      // the room is being subtracted - heavy reduction should not look like
+      // a dead microphone.
+      rmsAcc += raw * raw;
 
-      // The ring gets the RAW input, and the gate is applied to the output
+      // -- spectral noise print, ahead of everything else --
+      //
+      // Unlike the gate below, this may safely precede the ring. It subtracts
+      // a FIXED measured spectrum rather than reacting to the detector, so
+      // there is no loop to deadlock; and handing the detector a cleaner
+      // signal makes it MORE confident, not less.
+      //
+      // Emits the hop computed last time while collecting this one. Switching
+      // the stage on mid-signal costs one hop (~2.7 ms) of silence while the
+      // pipeline primes, which is why it is bypassed rather than left idling.
+      let x = raw;
+      if (nrActive) {
+        this.nrHopBuf[this.nrHopFill] = raw;
+        x = this.nrReady[this.nrHopFill];
+        this.nrHopFill++;
+        if (this.nrHopFill === this.nrHop) {
+          this.nrHopFill = 0;
+          this.nrProcessFrame();
+        }
+      }
+
+      // The ring gets the (de-noised) input, and the gate is applied to the output
       // instead. That ordering is load-bearing: the gate below asks the pitch
       // detector how periodic the signal is, and the detector reads the ring.
       // Gate the ring and a shut gate feeds it silence -> clarity 0 -> the
@@ -460,6 +670,10 @@ export class HardtuneKernel {
     }
 
     this.lastRms = Math.sqrt(rmsAcc / n);
+    this.lastLearnProgress =
+      this.nrLearnTarget > 0 && this.nrLearnFrames < this.nrLearnTarget
+        ? this.nrLearnFrames / this.nrLearnTarget
+        : 1;
     return ranDetect;
   }
 }

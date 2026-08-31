@@ -614,6 +614,8 @@ export interface ResolvedParams extends VoiceParams {
   masterGain: number;
   gateDb: number;
   denoise: number;
+  /** How much of the measured room print to subtract. 0 = stage bypassed. */
+  noiseReduction: number;
 }
 
 /**
@@ -626,7 +628,7 @@ export interface ResolvedParams extends VoiceParams {
  */
 export function resolveParams(
   voice: Voice,
-  opts: { match: number; robot: number; volume: number; gateDb: number; denoise: number },
+  opts: { match: number; robot: number; volume: number; gateDb: number; denoise: number; noiseReduction: number },
 ): ResolvedParams {
   const t = Math.min(1, Math.max(0, opts.match));
   const r = Math.min(1, Math.max(0, opts.robot));
@@ -667,5 +669,6 @@ export function resolveParams(
     masterGain: opts.volume,
     gateDb: opts.gateDb,
     denoise: opts.denoise,
+    noiseReduction: opts.noiseReduction,
   };
 }

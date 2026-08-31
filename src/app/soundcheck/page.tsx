@@ -43,7 +43,7 @@ export default function Page() {
       // Clean settings: the tuner is what's under test, not the dirt. The
       // gate is off too - an oscillator has no room noise to remove, and a
       // closed gate would just make every later check measure silence.
-      const base = resolveParams(VOICES[0], { match: 1, robot: 0, volume: 1, gateDb: -75, denoise: 0 });
+      const base = resolveParams(VOICES[0], { match: 1, robot: 0, volume: 1, gateDb: -75, denoise: 0, noiseReduction: 0 });
       const chain = buildEffectChain(ctx, base);
       chain.setParams({ drive: 1, bits: 16, downsampleFactor: 1, highpassHz: 60, lowpassHz: 12000, masterGain: 1, retuneGlideMs: 0, warbleCents: 0, roomMix: 0, semitoneShift: 0 });
 

@@ -33,7 +33,10 @@ export type SourceKind = "mic" | "file";
 
 const DEFAULT_MACROS = { match: 0.7, robot: 0, volume: 1.1 };
 /** Not voice-derived, so these survive voice changes. */
-const DEFAULT_CLEANUP = { gateDb: -50, denoise: 0.7 };
+const DEFAULT_CLEANUP = { gateDb: -50, denoise: 0.7, noiseReduction: 0 };
+
+/** How long to listen to the room. Long enough to average out a fan's cycle. */
+export const ROOM_CAPTURE_SECONDS = 2.5;
 
 export function useVoiceFx() {
   const [status, setStatus] = useState<VoiceStatus>("off");
@@ -316,11 +319,32 @@ export function useVoiceFx() {
     const next = VOICES.find((v) => v.id === preset.voiceId);
     if (next) setVoice(next);
     setMacros(preset.macros);
-    setCleanup(preset.cleanup);
+    // The room print is a spectrum measured in THIS room and cannot travel in
+    // a file, so an imported preset must not claim a reduction amount there is
+    // no profile for. Everything else in cleanup comes from the file.
+    setCleanup((prev) => ({ ...preset.cleanup, noiseReduction: prev.noiseReduction }));
     // Imported values land as overrides, which is what pins them against the
     // macro maths - otherwise resolveParams would immediately recompute them.
     setOverrides(preset.params);
     return warnings;
+  }, []);
+
+  /**
+   * Measure the room, then subtract it. The reduction amount is set up front
+   * rather than after the capture completes: the kernel ignores it until a
+   * profile actually exists, so this is safe, and it means the effect is
+   * audible the instant the countdown ends instead of needing a second click.
+   */
+  const learnRoom = useCallback(() => {
+    const graph = graphRef.current;
+    if (!graph) return;
+    graph.learnNoise(ROOM_CAPTURE_SECONDS);
+    setCleanup((prev) => ({ ...prev, noiseReduction: prev.noiseReduction > 0 ? prev.noiseReduction : 0.7 }));
+  }, []);
+
+  const clearRoom = useCallback(() => {
+    graphRef.current?.clearNoiseProfile();
+    setCleanup((prev) => ({ ...prev, noiseReduction: 0 }));
   }, []);
 
   useEffect(() => () => graphRef.current?.stop(), []);
@@ -366,5 +390,10 @@ export function useVoiceFx() {
     selectOutputDevice,
     exportPreset,
     importPreset,
+    learnRoom,
+    clearRoom,
+    /** 0..1 while measuring; 1 when idle. */
+    learnProgress: telemetry?.learnProgress ?? 1,
+    hasNoiseProfile: telemetry?.hasNoiseProfile ?? false,
   };
 }

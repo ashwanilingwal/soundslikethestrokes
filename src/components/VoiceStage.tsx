@@ -145,6 +145,11 @@ export function VoiceStage() {
             onScale={fx.selectScale}
             onReset={fx.resetOverrides}
             onNoiseCancellation={fx.toggleNoiseCancellation}
+            onLearnRoom={fx.learnRoom}
+            onClearRoom={fx.clearRoom}
+            learnProgress={fx.learnProgress}
+            hasNoiseProfile={fx.hasNoiseProfile}
+            canLearn={graphUp && !isFile}
             onExport={fx.exportPreset}
             onImport={fx.importPreset}
           />

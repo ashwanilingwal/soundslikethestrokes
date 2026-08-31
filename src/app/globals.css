@@ -891,6 +891,40 @@ details[open] .panel-toggle-chev { transform: rotate(180deg); }
   color: var(--fg-muted);
 }
 
+/* --- room print ----------------------------------------------------------------
+   Given its own framed block at the top of clean-up, because it is the one
+   control there that needs an ACTION before it does anything. */
+
+.room-print {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--ok) 34%, transparent);
+  background: color-mix(in srgb, var(--ok) 7%, transparent);
+}
+
+.room-print-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.room-print-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ok);
+}
+.room-print-state {
+  margin-left: auto;
+  font-family: var(--font-term), monospace;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+.room-print-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.room-print-note { font-size: 11px; line-height: 1.45; color: var(--fg-dim); }
+
 /* --- info popovers -------------------------------------------------------------
    A popover, not a tooltip: hover does not exist on a phone, and these hold
    more than a title attribute would show. */
