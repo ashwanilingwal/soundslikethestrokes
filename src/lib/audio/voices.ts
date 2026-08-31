@@ -57,6 +57,8 @@ export interface Voice extends VoiceParams {
   category: Category;
   label: string;
   era: string;
+  /** Short era/style descriptor used on the picker tiles. */
+  eraShort: string;
   /** The one-line answer to "how is this different from the last one?" */
   varies: string;
   /** True for the hard-tuned variants, so the UI can flag them. */
@@ -92,6 +94,7 @@ export const VOICES: Voice[] = [
     category: "strokes",
     label: "Julian I",
     era: "Is This It · 2001",
+    eraShort: "Garage '01",
     varies: "Narrow telephone band and hard clipping — the small-amp vocal. Driest and most distorted of the four.",
     retuneGlideMs: 35,
     dryWet: 1,
@@ -114,6 +117,7 @@ export const VOICES: Voice[] = [
     category: "strokes",
     label: "Julian II",
     era: "I'll Try Anything Once · 2006 demo",
+    eraShort: "Demo '06",
     varies: "Keeps the low end and veils the top instead of cutting it — warm and hazy, with a room around it. Sung glide, not a hard snap.",
     retuneGlideMs: 70,
     dryWet: 1,
@@ -136,6 +140,7 @@ export const VOICES: Voice[] = [
     category: "strokes",
     label: "Julian III",
     era: "The Voidz · 2014→",
+    eraShort: "Warped '14",
     varies: "Heavy digital crush and a seasick pitch wobble. Hard snap, darkest band — the most obviously processed.",
     retuneGlideMs: 0,
     dryWet: 1,
@@ -158,6 +163,7 @@ export const VOICES: Voice[] = [
     category: "strokes",
     label: "Julian IV",
     era: "The New Abnormal · 2020",
+    eraShort: "Falsetto '20",
     varies: "Lifted five semitones into the falsetto register — brightest, cleanest and wettest of the four, with almost none of the dirt.",
     retuneGlideMs: 50,
     dryWet: 1,
@@ -183,6 +189,7 @@ export const VOICES: Voice[] = [
     category: "auto",
     label: "Julian · Auto",
     era: "hard-tuned",
+    eraShort: "Julian",
     varies: "Julian II's warm haze with the glide killed and the wet locked at 100% — every syllable stair-steps onto the grid.",
     autotuned: true,
     retuneGlideMs: 0,
@@ -206,6 +213,7 @@ export const VOICES: Voice[] = [
     category: "am",
     label: "Alex I",
     era: "Whatever People Say I Am · 2006",
+    eraShort: "Sheffield '06",
     varies: "Bright, dry and barely coloured — wide-open top with a hard consonant edge. The least processed voice here.",
     retuneGlideMs: 90,
     dryWet: 1,
@@ -228,6 +236,7 @@ export const VOICES: Voice[] = [
     category: "am",
     label: "Alex II",
     era: "AM · 2013",
+    eraShort: "Desert '13",
     varies: "Smoother and rounder than the early one: gentle saturation, softer top, and real room behind it.",
     retuneGlideMs: 60,
     dryWet: 1,
@@ -250,6 +259,7 @@ export const VOICES: Voice[] = [
     category: "am",
     label: "Alex III",
     era: "Tranquility Base Hotel & Casino · 2018",
+    eraShort: "Lounge '18",
     varies: "Dropped two semitones into the lounge-crooner register — close, dark and wet, with almost no bite.",
     retuneGlideMs: 110,
     dryWet: 1,
@@ -272,6 +282,7 @@ export const VOICES: Voice[] = [
     category: "am",
     label: "Alex IV",
     era: "The Car · 2022",
+    eraShort: "Strings '22",
     varies: "Silky orchestral croon with real vibrato — down one semitone, warmer and far more expressive than Tranquility Base.",
     retuneGlideMs: 100,
     dryWet: 1,
@@ -295,6 +306,7 @@ export const VOICES: Voice[] = [
     category: "auto",
     label: "Alex · Auto",
     era: "hard-tuned",
+    eraShort: "Alex",
     varies: "The AM-era smoothness snapped hard to the grid — glide zero, no wobble, tuning fully exposed.",
     autotuned: true,
     retuneGlideMs: 0,
@@ -318,6 +330,7 @@ export const VOICES: Voice[] = [
     category: "auto",
     label: "Posty · Auto",
     era: "hard-tuned",
+    eraShort: "Posty",
     varies: "The archetype the other two are measured against: clean path, wide reverb, and nothing but the tune doing the work.",
     autotuned: true,
     retuneGlideMs: 0,
@@ -341,6 +354,7 @@ export const VOICES: Voice[] = [
     category: "pm",
     label: "Posty I",
     era: "Stoney · 2016",
+    eraShort: "Trap-soul '16",
     varies: "Warm and hazy under a hard tune — rounded top, plenty of room, the melodic-drawl end of autotune.",
     autotuned: true,
     retuneGlideMs: 0,
@@ -364,6 +378,7 @@ export const VOICES: Voice[] = [
     category: "pm",
     label: "Posty II",
     era: "Hollywood's Bleeding · 2019",
+    eraShort: "Stadium '19",
     varies: "The stadium version: cleanest path here, brightest top, biggest reverb. Tuning is the only effect doing work.",
     autotuned: true,
     retuneGlideMs: 0,
@@ -387,6 +402,7 @@ export const VOICES: Voice[] = [
     category: "pm",
     label: "Posty III",
     era: "Twelve Carat Toothache · 2022",
+    eraShort: "Rough '22",
     varies: "Rougher and darker: real saturation and a touch of crush behind the tune, less polish than the other two.",
     autotuned: true,
     retuneGlideMs: 0,
@@ -449,7 +465,12 @@ export function optionLabel(voice: Voice): string {
  * rather than stored, so there is no second name to keep in sync.
  */
 export function shortLabel(voice: Voice): string {
-  return voice.category === "auto" ? artistName(voice.artist) : voice.era.split(" · ")[0];
+  return voice.eraShort;
+}
+
+/** The album behind an era, for tooltips and the description line. */
+export function albumLabel(voice: Voice): string {
+  return voice.category === "auto" ? artistName(voice.artist) : voice.era;
 }
 
 /** The small print under a button: the year, or "auto". */

@@ -33,6 +33,9 @@ export function VinylButton({
   onClick: () => void;
 }) {
   const opening = status === "opening";
+  // Nothing has been started yet and nothing is blocking it: the one moment
+  // the record needs to advertise that it is the button.
+  const idle = status === "off" && !disabled && !opening;
 
   const artStyle = {
     "--label-paper": voice.art.paper,
@@ -43,7 +46,7 @@ export function VinylButton({
     <div className="flex flex-col items-center gap-2">
       <button
         type="button"
-        className="vinyl-btn"
+        className={`vinyl-btn ${idle ? "vinyl-idle" : ""}`}
         disabled={disabled || opening}
         onClick={onClick}
         aria-pressed={active}
@@ -64,9 +67,11 @@ export function VinylButton({
 
       {status === "error" && message ? (
         <p className="max-w-[16rem] text-center text-xs text-accent-soft">{message}</p>
+      ) : idle ? (
+        <p className="vinyl-hint">▲ click the record</p>
       ) : (
         <p className="caps text-fg-dim">
-          {active ? "on air" : opening ? "starting" : status === "live" ? "paused" : "not recording"}
+          {active ? "on air" : opening ? "starting" : status === "live" ? "paused" : "ready"}
         </p>
       )}
     </div>

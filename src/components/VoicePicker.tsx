@@ -3,10 +3,10 @@
 import { LabelArt } from "./LabelArt";
 import {
   CATEGORIES,
+  albumLabel,
   shortLabel,
   voiceForCategory,
   voicesIn,
-  yearLabel,
   type Category,
   type Voice,
 } from "@/lib/audio/voices";
@@ -48,7 +48,7 @@ export function VoicePicker({
             type="button"
             className={`sleeve-btn ${v.id === voice.id ? "sleeve-on" : ""}`}
             aria-pressed={v.id === voice.id}
-            title={`${shortLabel(v)} · ${yearLabel(v)}`}
+            title={albumLabel(v)}
             onClick={() => onSelect(v)}
           >
             <LabelArt art={v.art} shape="sleeve" className="sleeve-art" />
@@ -57,7 +57,9 @@ export function VoicePicker({
         ))}
       </div>
 
-      <p className="voice-varies">{voice.varies}</p>
+      <p className="voice-varies">
+        <span className="text-fg-muted">{albumLabel(voice)}</span> — {voice.varies}
+      </p>
     </div>
   );
 }
