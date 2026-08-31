@@ -265,6 +265,59 @@ body {
 }
 
 .seg-voice { display: flex; flex-direction: column; gap: 1px; flex: 1 1 30%; }
+
+/* --- sleeve picker -------------------------------------------------------------
+   Pick by artwork, not by reading a list. Each voice's generated sleeve is the
+   target; the selected one takes a lit ring, which is the same "a light turns
+   on" language the channel buttons use. */
+
+.sleeve-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 2px 5px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.sleeve-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+.sleeve-art {
+  display: block;
+  width: 100%;
+  max-width: 44px;
+  aspect-ratio: 1;
+  border-radius: 3px;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  transition: transform 130ms ease, box-shadow 130ms ease;
+}
+.sleeve-btn:hover .sleeve-art { transform: translateY(-2px); }
+
+.sleeve-name {
+  width: 100%;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sleeve-on { color: var(--fg); }
+.sleeve-on .sleeve-art {
+  box-shadow:
+    0 0 0 2px var(--cyan),
+    0 0 16px rgba(34, 223, 255, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
 .seg-name { display: block; }
 .seg-year {
   display: block;
@@ -641,6 +694,8 @@ details[open] > summary::before { content: "▾ "; }
      padding is the cheapest thing to reclaim before the platter shrinks. */
   .seg { padding: 3px 8px; }
   .seg-year { font-size: 10px; }
+  .sleeve-art { max-width: 34px; }
+  .sleeve-btn { gap: 2px; padding: 2px 2px 3px; }
   .stage { gap: 5px; padding: 4px 8px 6px; }
   .win-title { padding: 3px 8px; }
   .macro-card { gap: 3px; }
@@ -661,6 +716,8 @@ details[open] > summary::before { content: "▾ "; }
    the description, in that order — neither is needed to operate anything. */
 @media (max-height: 700px) {
   .vinyl-btn { width: clamp(74px, 19vw, 100px); }
+  .sleeve-name { display: none; }
+  .sleeve-art { max-width: 30px; }
   .voice-varies { -webkit-line-clamp: 1; }
 }
 

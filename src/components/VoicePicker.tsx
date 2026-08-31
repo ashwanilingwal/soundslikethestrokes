@@ -1,5 +1,6 @@
 "use client";
 
+import { LabelArt } from "./LabelArt";
 import {
   CATEGORIES,
   shortLabel,
@@ -45,12 +46,13 @@ export function VoicePicker({
           <button
             key={v.id}
             type="button"
-            className={`seg seg-voice ${v.id === voice.id ? "seg-on" : ""}`}
+            className={`sleeve-btn ${v.id === voice.id ? "sleeve-on" : ""}`}
             aria-pressed={v.id === voice.id}
+            title={`${shortLabel(v)} · ${yearLabel(v)}`}
             onClick={() => onSelect(v)}
           >
-            <span className="seg-name">{shortLabel(v)}</span>
-            <span className="seg-year">{yearLabel(v)}</span>
+            <LabelArt art={v.art} shape="sleeve" className="sleeve-art" />
+            <span className="sleeve-name">{shortLabel(v)}</span>
           </button>
         ))}
       </div>

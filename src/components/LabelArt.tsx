@@ -10,16 +10,34 @@ import type { LabelArt as Art } from "@/lib/audio/voices";
  * Drawn under the PLAY/STOP text, so every motif stays inside a low opacity
  * band and leaves the middle relatively clear.
  */
-export function LabelArt({ art, className }: { art: Art; className?: string }) {
+export function LabelArt({
+  art,
+  className,
+  shape = "disc",
+}: {
+  art: Art;
+  className?: string;
+  /** A record label is round; a sleeve is square. Same artwork either way. */
+  shape?: "disc" | "sleeve";
+}) {
+  // Ids must be unique per (motif, palette, shape) or one <defs> would clip
+  // every other copy on the page to the wrong outline.
+  const id = `clip-${shape}-${art.motif}-${art.ink.replace("#", "")}`;
+  const sleeve = shape === "sleeve";
+
   return (
-    <svg viewBox="0 0 100 100" className={className} aria-hidden focusable="false">
+    <svg viewBox="0 0 100 100" className={className} aria-hidden focusable="false" preserveAspectRatio="xMidYMid slice">
       <defs>
-        <clipPath id={`clip-${art.motif}-${art.ink.replace("#", "")}`}>
-          <circle cx="50" cy="50" r="50" />
+        <clipPath id={id}>
+          {sleeve ? <rect x="0" y="0" width="100" height="100" /> : <circle cx="50" cy="50" r="50" />}
         </clipPath>
       </defs>
-      <circle cx="50" cy="50" r="50" fill={art.paper} />
-      <g clipPath={`url(#clip-${art.motif}-${art.ink.replace("#", "")})`} fill={art.ink} stroke={art.ink}>
+      {sleeve ? (
+        <rect x="0" y="0" width="100" height="100" fill={art.paper} />
+      ) : (
+        <circle cx="50" cy="50" r="50" fill={art.paper} />
+      )}
+      <g clipPath={`url(#${id})`} fill={art.ink} stroke={art.ink}>
         {motif(art.motif)}
       </g>
     </svg>
