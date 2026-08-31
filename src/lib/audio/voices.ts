@@ -72,6 +72,12 @@ export interface Voice extends VoiceParams {
    * back to the generated art, so a missing file degrades rather than breaks.
    */
   cover?: string;
+  /**
+   * background-position for `cover`. Sleeves are square and centre fine, but
+   * a portrait photo cropped to a circle puts the face near the top of the
+   * frame - centring one guillotines it.
+   */
+  coverPosition?: string;
 }
 
 /**
@@ -215,6 +221,8 @@ export const VOICES: Voice[] = [
     roomMix: 0.34,
     semitoneShift: 0,
     art: { paper: "#0a0f18", ink: "#5fd2f2", motif: "burst" },
+    cover: "/album-art/julian.jpg",
+    coverPosition: "center 25%",
   },
   {
     id: "alex-1",
@@ -335,6 +343,8 @@ export const VOICES: Voice[] = [
     roomMix: 0.32,
     semitoneShift: 0,
     art: { paper: "#12091c", ink: "#c08cff", motif: "burst" },
+    cover: "/album-art/alex-turner.jpg",
+    coverPosition: "center 25%",
   },
   {
     id: "posty-auto",
@@ -359,6 +369,8 @@ export const VOICES: Voice[] = [
     roomMix: 0.4,
     semitoneShift: 0,
     art: { paper: "#1a0d14", ink: "#ff8fb8", motif: "burst" },
+    cover: "/album-art/post-malone.jpg",
+    coverPosition: "center 25%",
   },
   {
     id: "posty-1",

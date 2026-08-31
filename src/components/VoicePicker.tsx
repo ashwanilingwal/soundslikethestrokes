@@ -52,7 +52,10 @@ export function VoicePicker({
             onClick={() => onSelect(v)}
           >
             {v.cover ? (
-              <span className="sleeve-art sleeve-cover" style={{ backgroundImage: `url("${v.cover}")` }} />
+              <span
+                className="sleeve-art sleeve-cover"
+                style={{ backgroundImage: `url("${v.cover}")`, backgroundPosition: v.coverPosition ?? "center" }}
+              />
             ) : (
               <LabelArt art={v.art} shape="sleeve" className="sleeve-art" />
             )}

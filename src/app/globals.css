@@ -411,20 +411,6 @@ body {
   }
 }
 
-.vinyl-hint {
-  font-family: var(--font-grotesk), sans-serif;
-  font-weight: 700;
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--cyan);
-  animation: hint-pulse 1.9s ease-in-out infinite;
-}
-@keyframes hint-pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
 .vinyl-spin { animation: vinyl-spin 1.9s linear infinite; }
 @keyframes vinyl-spin { to { transform: rotate(360deg); } }
 
@@ -452,7 +438,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 1px;
-  width: 42%;
+  width: 31%;
   aspect-ratio: 1;
   border-radius: 50%;
   background: var(--label-ink, var(--accent));
@@ -465,16 +451,36 @@ body {
   font-size: clamp(10px, 2.6vw, 14px);
   letter-spacing: 0.12em;
 }
-.vinyl-label-sub {
-  max-width: 86%;
-  font-size: clamp(7px, 1.6vw, 9px);
+/* The record's name, below the disc where there is room to read it. */
+.vinyl-caption {
+  max-width: 100%;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  font-size: clamp(11px, 2.6vw, 13px);
+  letter-spacing: 0.02em;
   text-align: center;
-  opacity: 0.82;
+  color: var(--fg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The call to action. A lit pill, not a caption - on first load this is the
+   only thing on screen the visitor has to find. */
+.vinyl-cta {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #7df0ff, var(--cyan));
+  color: #05202a;
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: 0 0 18px rgba(34, 223, 255, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  animation: cta-pulse 1.7s ease-in-out infinite;
+}
+@keyframes cta-pulse {
+  0%, 100% { transform: translateY(0); box-shadow: 0 0 14px rgba(34, 223, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+  50% { transform: translateY(-2px); box-shadow: 0 0 26px rgba(34, 223, 255, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
 }
 
 .vinyl-hole {
@@ -732,6 +738,8 @@ details[open] > summary::before { content: "▾ "; }
   .seg { padding: 3px 8px; }
   .seg-year { font-size: 10px; }
   .sleeve-art { max-width: 34px; }
+  .vinyl-caption { font-size: 11px; }
+  .vinyl-cta { padding: 3px 10px; font-size: 10px; }
   .sleeve-btn { gap: 2px; padding: 2px 2px 3px; }
   .stage { gap: 5px; padding: 4px 8px 6px; }
   .win-title { padding: 3px 8px; }
@@ -759,6 +767,14 @@ details[open] > summary::before { content: "▾ "; }
   .voice-varies { -webkit-line-clamp: 1; }
 }
 
+/* The caption is redundant on a cramped screen: the description line right
+   below it already opens with the album, and the tile shows the era. */
+@media (max-height: 655px) {
+  .vinyl-caption { display: none; }
+  .stage { padding-bottom: 2px; }
+  .stage-window { gap: 4px; }
+}
+
 @media (max-height: 620px) {
   .stage-footer { display: none; }
   .voice-varies { -webkit-line-clamp: 1; }
@@ -771,7 +787,6 @@ details[open] > summary::before { content: "▾ "; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .vinyl-spin, .rec-dot, .vinyl-idle .vinyl-disc, .vinyl-hint { animation: none; }
-  .vinyl-hint { opacity: 1; }
+  .vinyl-spin, .rec-dot, .vinyl-idle .vinyl-disc, .vinyl-cta { animation: none; }
   * { transition-duration: 1ms !important; }
 }
