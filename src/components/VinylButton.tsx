@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 import type { VoiceStatus } from "@/hooks/useVoiceFx";
-import { discLabel, type Voice } from "@/lib/audio/voices";
+import { coverFor, discLabel, type Voice } from "@/lib/audio/voices";
 import { LabelArt } from "./LabelArt";
 
 /**
@@ -46,10 +46,10 @@ export function VinylButton({
     "--label-ink": voice.art.ink,
   } as CSSProperties;
 
-  const coverStyle: CSSProperties = {
-    backgroundImage: `url("${voice.cover}")`,
-    backgroundPosition: voice.coverPosition ?? "center",
-  };
+  const cover = coverFor(voice);
+  const coverStyle: CSSProperties = cover
+    ? { backgroundImage: `url("${cover.url}")`, backgroundPosition: cover.position }
+    : {};
 
   return (
     <div className="flex flex-col items-center gap-1.5">
@@ -63,7 +63,7 @@ export function VinylButton({
         style={artStyle}
       >
         <span className={`vinyl-disc ${active ? "vinyl-spin" : ""}`}>
-          {voice.cover ? (
+          {cover ? (
             <span className="vinyl-art vinyl-cover" style={coverStyle} />
           ) : (
             <LabelArt art={voice.art} className="vinyl-art" />

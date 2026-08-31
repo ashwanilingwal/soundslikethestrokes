@@ -147,6 +147,7 @@ export const VOICES: Voice[] = [
     roomMix: 0.38,
     semitoneShift: 0,
     art: { paper: "#2a1a10", ink: "#e8a33d", motif: "haze" },
+    cover: "/album-art/try-anything.jpg",
   },
   {
     id: "julian-3",
@@ -319,6 +320,7 @@ export const VOICES: Voice[] = [
     roomMix: 0.36,
     semitoneShift: -1,
     art: { paper: "#1c1b18", ink: "#b9c2b0", motif: "haze" },
+    cover: "/album-art/the-car.jpg",
   },
   {
     id: "alex-auto",
@@ -505,6 +507,32 @@ export function albumLabel(voice: Voice): string {
  */
 export function discLabel(voice: Voice): string {
   return voice.category === "auto" ? artistName(voice.artist) : voice.era.split(" · ")[0];
+}
+
+/**
+ * The singer's face, used wherever a voice has no sleeve of its own - an
+ * era with no artwork supplied, or the autotune voices, which are people
+ * rather than records.
+ */
+export const ARTIST_PORTRAIT: Partial<Record<Voice["artist"], string>> = {
+  julian: "/album-art/julian.jpg",
+  alex: "/album-art/alex-turner.jpg",
+  posty: "/album-art/post-malone.jpg",
+};
+
+/**
+ * What to show on a tile or a disc: the sleeve if there is one, otherwise the
+ * artist. Returns null only if neither exists, which is the generated-art
+ * fallback - it should not happen while every artist has a portrait, but the
+ * data allows it and a missing file should degrade rather than blank out.
+ *
+ * Portraits are framed high: the photos are portrait orientation, and
+ * centring one inside a circle guillotines the face.
+ */
+export function coverFor(voice: Voice): { url: string; position: string } | null {
+  if (voice.cover) return { url: voice.cover, position: voice.coverPosition ?? "center" };
+  const portrait = ARTIST_PORTRAIT[voice.artist];
+  return portrait ? { url: portrait, position: "center 25%" } : null;
 }
 
 /** "Julian", "Alex", "Posty" — for prose like "How much Julian". */

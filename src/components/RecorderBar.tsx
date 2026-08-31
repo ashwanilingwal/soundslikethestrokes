@@ -13,6 +13,7 @@ export function RecorderBar({
   elapsed,
   clip,
   canRecord,
+  needsStart,
   onStart,
   onStop,
 }: {
@@ -20,6 +21,8 @@ export function RecorderBar({
   elapsed: number;
   clip: Clip | null;
   canRecord: boolean;
+  /** Nothing is running yet, so pressing record will start it too. */
+  needsStart: boolean;
   onStart: () => void;
   onStop: () => void;
 }) {
@@ -43,7 +46,15 @@ export function RecorderBar({
           </a>
         </>
       ) : (
-        !recording && <span className="text-[11px] text-fg-dim">{canRecord ? "captures the effected output" : "go live first"}</span>
+        !recording && (
+          <span className="text-[11px] text-fg-dim">
+            {!canRecord
+              ? "pick a source first"
+              : needsStart
+                ? "starts it too"
+                : "captures the effected output"}
+          </span>
+        )
       )}
     </div>
   );

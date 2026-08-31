@@ -44,8 +44,15 @@ export function useRecorder(stream: MediaStream | null) {
     recorderRef.current?.stop();
   }, []);
 
-  const start = useCallback(() => {
-    if (!stream || recorderRef.current) return;
+  /**
+   * Record a stream passed in, rather than the one this hook was rendered
+   * with. That is what lets "record" start the engine itself: the graph is
+   * created inside the click, so its stream does not reach this hook as a
+   * prop until a render that has not happened yet.
+   */
+  const startWith = useCallback((source: MediaStream | null) => {
+    if (!source || recorderRef.current) return;
+    const stream = source;
     const { mimeType, ext } = pickMime();
     const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     chunksRef.current = [];
@@ -72,7 +79,9 @@ export function useRecorder(stream: MediaStream | null) {
     }, 200);
     recorder.start();
     setStatus("recording");
-  }, [stream]);
+  }, []);
+
+  const start = useCallback(() => startWith(stream), [startWith, stream]);
 
   // The stream dies with the graph; a recorder left running on a dead stream
   // would produce a truncated-but-valid clip, so finish it cleanly.
@@ -89,5 +98,5 @@ export function useRecorder(stream: MediaStream | null) {
     [],
   );
 
-  return { status, elapsed, clip, start, stop };
+  return { status, elapsed, clip, start, startWith, stop };
 }

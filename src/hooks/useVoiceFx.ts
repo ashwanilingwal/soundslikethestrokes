@@ -92,8 +92,9 @@ export function useVoiceFx() {
     setFilePlaying(false);
   }, []);
 
-  const start = useCallback(async () => {
-    if (graphRef.current) return;
+  /** Resolves with the recorder feed, so a caller can record immediately. */
+  const start = useCallback(async (): Promise<MediaStream | null> => {
+    if (graphRef.current) return graphRef.current.recorderStream;
     setMessage(null);
     setStatus("opening");
     try {
@@ -124,6 +125,7 @@ export function useVoiceFx() {
         // list is only worth re-reading once one has been granted.
         void listDevices().then(setDevices);
       }
+      return graph.recorderStream;
     } catch (err) {
       graphRef.current?.stop();
       graphRef.current = null;
@@ -135,6 +137,7 @@ export function useVoiceFx() {
             ? "That file couldn't be played."
             : "The microphone couldn't be started.",
       );
+      return null;
     }
   }, []);
 

@@ -35,6 +35,24 @@ export function VoiceStage() {
   // decoded buffer and a live graph.
   const active = isFile ? fx.filePlaying : graphUp;
 
+  /**
+   * Record does not require going live first: if nothing is running it starts
+   * the engine and records from the first sample. start() hands back the
+   * recorder feed directly, because the graph is built inside this click and
+   * its stream would not reach useRecorder as a prop until the next render.
+   */
+  const onRecord = async () => {
+    if (recorder.status === "recording") {
+      recorder.stop();
+      return;
+    }
+    if (graphUp) {
+      recorder.start();
+      return;
+    }
+    recorder.startWith(await fx.start());
+  };
+
   const onTransport = () => {
     if (isFile && graphUp) fx.toggleTransport();
     else if (graphUp) fx.stop();
@@ -98,8 +116,9 @@ export function VoiceStage() {
               status={recorder.status}
               elapsed={recorder.elapsed}
               clip={recorder.clip}
-              canRecord={fx.status === "live"}
-              onStart={recorder.start}
+              canRecord={!blocked}
+              needsStart={!graphUp}
+              onStart={() => void onRecord()}
               onStop={recorder.stop}
             />
           </section>

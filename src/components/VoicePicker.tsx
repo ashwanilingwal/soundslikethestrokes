@@ -4,6 +4,7 @@ import { LabelArt } from "./LabelArt";
 import {
   CATEGORIES,
   albumLabel,
+  coverFor,
   shortLabel,
   voiceForCategory,
   voicesIn,
@@ -51,14 +52,17 @@ export function VoicePicker({
             title={albumLabel(v)}
             onClick={() => onSelect(v)}
           >
-            {v.cover ? (
-              <span
-                className="sleeve-art sleeve-cover"
-                style={{ backgroundImage: `url("${v.cover}")`, backgroundPosition: v.coverPosition ?? "center" }}
-              />
-            ) : (
-              <LabelArt art={v.art} shape="sleeve" className="sleeve-art" />
-            )}
+            {(() => {
+              const c = coverFor(v);
+              return c ? (
+                <span
+                  className="sleeve-art sleeve-cover"
+                  style={{ backgroundImage: `url("${c.url}")`, backgroundPosition: c.position }}
+                />
+              ) : (
+                <LabelArt art={v.art} shape="sleeve" className="sleeve-art" />
+              );
+            })()}
             <span className="sleeve-name">{shortLabel(v)}</span>
           </button>
         ))}
