@@ -54,7 +54,11 @@ export function VinylButton({
         style={artStyle}
       >
         <span className={`vinyl-disc ${active ? "vinyl-spin" : ""}`}>
-          <LabelArt art={voice.art} className="vinyl-art" />
+          {voice.cover ? (
+            <span className="vinyl-art vinyl-cover" style={{ backgroundImage: `url("${voice.cover}")` }} />
+          ) : (
+            <LabelArt art={voice.art} className="vinyl-art" />
+          )}
           <span className="vinyl-grooves" aria-hidden />
           <span className="vinyl-label">
             <span className="vinyl-label-text">{active ? activeLabel : opening ? "…" : idleLabel}</span>

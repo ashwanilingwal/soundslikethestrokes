@@ -65,6 +65,13 @@ export interface Voice extends VoiceParams {
   autotuned?: boolean;
   highpassQ: number;
   art: LabelArt;
+  /**
+   * Path to a real sleeve under /public/album-art. Optional on purpose: the
+   * autotune voices are singers rather than records, and some eras (a demo,
+   * a band with no matching release here) have nothing to show - those fall
+   * back to the generated art, so a missing file degrades rather than breaks.
+   */
+  cover?: string;
 }
 
 /**
@@ -110,6 +117,7 @@ export const VOICES: Voice[] = [
     roomMix: 0.1,
     semitoneShift: 0,
     art: { paper: "#e8e2d6", ink: "#c8102e", motif: "bar" },
+    cover: "/album-art/isthisit.jpg",
   },
   {
     id: "julian-2",
@@ -182,6 +190,7 @@ export const VOICES: Voice[] = [
     // simply higher.
     semitoneShift: 5,
     art: { paper: "#101a2e", ink: "#ff7ac6", motif: "orbit" },
+    cover: "/album-art/newabnormal.jpg",
   },
   {
     id: "julian-auto",
@@ -229,6 +238,7 @@ export const VOICES: Voice[] = [
     roomMix: 0.08,
     semitoneShift: 0,
     art: { paper: "#111417", ink: "#dfe6ea", motif: "dots" },
+    cover: "/album-art/whateverpeople.jpg",
   },
   {
     id: "alex-2",
@@ -252,6 +262,7 @@ export const VOICES: Voice[] = [
     roomMix: 0.3,
     semitoneShift: 0,
     art: { paper: "#0b0b0c", ink: "#f2ede4", motif: "arc" },
+    cover: "/album-art/am.jpg",
   },
   {
     id: "alex-3",
@@ -275,6 +286,7 @@ export const VOICES: Voice[] = [
     roomMix: 0.45,
     semitoneShift: -2,
     art: { paper: "#241a0e", ink: "#d8b169", motif: "orbit" },
+    cover: "/album-art/casinobase.jpg",
   },
   {
     id: "alex-4",
@@ -395,6 +407,7 @@ export const VOICES: Voice[] = [
     roomMix: 0.45,
     semitoneShift: 0,
     art: { paper: "#140a10", ink: "#ff6f9c", motif: "burst" },
+    cover: "/album-art/hollywoodbleeding.jpg",
   },
   {
     id: "posty-3",
@@ -440,8 +453,8 @@ export const DEFAULT_VOICE = VOICES.find((v) => v.id === "julian-auto") ?? VOICE
 export const CATEGORIES: { id: Category; label: string; hint: string }[] = [
   { id: "auto", label: "Autotune", hint: "hard-snapped — pick a singer" },
   { id: "strokes", label: "The Strokes", hint: "Julian Casablancas, by era" },
-  { id: "am", label: "AM", hint: "Arctic Monkeys — Alex Turner, by era" },
-  { id: "pm", label: "PM", hint: "Post Malone, by era" },
+  { id: "am", label: "Arctic Monkeys", hint: "Alex Turner, by era" },
+  { id: "pm", label: "Post Malone", hint: "by era" },
 ];
 
 export function voicesIn(category: Category): Voice[] {

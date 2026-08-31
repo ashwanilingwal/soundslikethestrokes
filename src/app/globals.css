@@ -310,6 +310,15 @@ body {
   white-space: nowrap;
 }
 
+/* A real sleeve, where one exists. Same box as the generated art, so the two
+   sit side by side in a row without any jump. */
+.sleeve-cover,
+.vinyl-cover {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 .sleeve-on { color: var(--fg); }
 .sleeve-on .sleeve-art {
   box-shadow:
@@ -743,6 +752,7 @@ details[open] > summary::before { content: "▾ "; }
    which a 640px-tall phone cannot absorb. Buy it back from the platter and
    the description, in that order — neither is needed to operate anything. */
 @media (max-height: 700px) {
+  .stage { padding-bottom: 3px; }
   .vinyl-btn { width: clamp(74px, 19vw, 100px); }
   .sleeve-name { display: none; }
   .sleeve-art { max-width: 30px; }
