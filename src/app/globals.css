@@ -891,6 +891,63 @@ details[open] .panel-toggle-chev { transform: rotate(180deg); }
   color: var(--fg-muted);
 }
 
+/* --- room check ----------------------------------------------------------------
+   On the deck, so a noisy room announces itself instead of waiting to be
+   discovered. One line when the room is quiet - the common case should cost
+   no attention and no vertical space - and it only grows when there is
+   something worth doing. */
+
+.room-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+  margin: 0 1px 1px;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--room) 8%, transparent);
+  --room: var(--fg-dim);
+}
+.room-quiet { --room: var(--ok); }
+.room-some { --room: var(--amber); }
+.room-noisy { --room: var(--accent); }
+.room-measuring { --room: var(--cyan); }
+.room-fixed { --room: var(--ok); }
+
+.room-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--room);
+  box-shadow: 0 0 8px var(--room);
+}
+/* Only the states that want action pulse; a quiet room should sit still. */
+.room-noisy .room-dot, .room-measuring .room-dot { animation: room-pulse 1.5s ease-in-out infinite; }
+@keyframes room-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+
+.room-line { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 1px; }
+.room-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--room);
+}
+.room-db { color: var(--fg-dim); font-weight: 400; letter-spacing: 0.02em; }
+.room-detail { font-size: 11px; line-height: 1.35; color: var(--fg-muted); }
+.room-tip { font-size: 11px; line-height: 1.35; color: var(--fg-dim); }
+
+.room-progress {
+  flex: 0 0 64px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--slot);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.room-progress-fill { display: block; height: 100%; background: var(--cyan); transition: width 120ms linear; }
+
 /* --- room print ----------------------------------------------------------------
    Given its own framed block at the top of clean-up, because it is the one
    control there that needs an ACTION before it does anything. */
@@ -1140,6 +1197,11 @@ details[open] > summary::before { content: "▾ "; }
   .panel-toggle-title { font-size: 11px; }
   .panel-toggle-sub { display: none; }
   .tweak-blurb { display: none; }
+  .room-detail, .room-tip { display: none; }
+  /* Keep the warning, drop the all-clear: the strip earns its height only
+     when there is actually something to act on. */
+  .room-check { padding: 4px 8px; }
+  .room-db { display: none; }
   .tweak-head { padding: 6px 9px; }
   .tweak-body { padding: 9px; }
   .vinyl-cta { padding: 3px 10px; font-size: 10px; }
@@ -1151,6 +1213,11 @@ details[open] > summary::before { content: "▾ "; }
   .stage-grid { gap: 6px; }
   .vinyl-btn { width: clamp(94px, 24vw, 130px); }
   .card { padding-block: 4px; }
+  /* This one only draws the border round the readout and the room strip;
+     its children carry their own padding, so it must not add more. */
+  .readout-card { padding-block: 0; }
+  .room-check { padding: 3px 8px; }
+  .room-label { font-size: 10px; }
   .voice-varies {
     display: -webkit-box;
     -webkit-line-clamp: 2;

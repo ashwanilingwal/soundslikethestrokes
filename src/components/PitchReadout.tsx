@@ -13,7 +13,7 @@ export function PitchReadout({ telemetry, live }: { telemetry: Telemetry | null;
   const level = telemetry ? Math.min(1, telemetry.rms * 4) : 0;
 
   return (
-    <div className="card flex flex-col gap-1.5 px-3 py-2">
+    <div className="flex flex-col gap-1.5 px-3 py-2">
       <div className="flex items-baseline justify-center gap-3">
         <span className={`num text-lg ${voiced ? "text-fg" : "text-fg-dim"}`}>
           {voiced ? midiName(telemetry.midi) : "—"}

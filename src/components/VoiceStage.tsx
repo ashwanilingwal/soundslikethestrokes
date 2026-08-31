@@ -12,6 +12,7 @@ import { MonitorBadge } from "./MonitorBadge";
 import { SourceBar } from "./SourceBar";
 import { MonitorModal } from "./MonitorModal";
 import { PitchReadout } from "./PitchReadout";
+import { RoomCheck } from "./RoomCheck";
 import { RecorderBar } from "./RecorderBar";
 import { VinylButton } from "./VinylButton";
 import { VoicePicker } from "./VoicePicker";
@@ -108,7 +109,19 @@ export function VoiceStage() {
               onFile={fx.pickFile}
             />
             <VoicePicker voice={fx.voice} onSelect={fx.selectVoice} />
-            <PitchReadout telemetry={fx.telemetry} live={fx.status === "live"} />
+<div className="card readout-card">
+                          <PitchReadout telemetry={fx.telemetry} live={fx.status === "live"} />
+              {/* On the deck, not buried in the panel: someone who does not know
+                  their room is noisy will never open a drawer to find out. */}
+              <RoomCheck
+                noiseFloor={fx.noiseFloor}
+                live={graphUp && !isFile}
+                learnProgress={fx.learnProgress}
+                hasNoiseProfile={fx.hasNoiseProfile}
+                onLearn={fx.learnRoom}
+                onClear={fx.clearRoom}
+              />
+            </div>
             <MacroBars
               match={fx.macros.match}
               robot={fx.macros.robot}
@@ -145,11 +158,7 @@ export function VoiceStage() {
             onScale={fx.selectScale}
             onReset={fx.resetOverrides}
             onNoiseCancellation={fx.toggleNoiseCancellation}
-            onLearnRoom={fx.learnRoom}
-            onClearRoom={fx.clearRoom}
-            learnProgress={fx.learnProgress}
             hasNoiseProfile={fx.hasNoiseProfile}
-            canLearn={graphUp && !isFile}
             onExport={fx.exportPreset}
             onImport={fx.importPreset}
           />

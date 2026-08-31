@@ -394,6 +394,8 @@ export function useVoiceFx() {
     clearRoom,
     /** 0..1 while measuring; 1 when idle. */
     learnProgress: telemetry?.learnProgress ?? 1,
+    /** Linear amplitude of the room, measured while nobody is speaking. */
+    noiseFloor: telemetry?.noiseFloor ?? 0,
     hasNoiseProfile: telemetry?.hasNoiseProfile ?? false,
   };
 }

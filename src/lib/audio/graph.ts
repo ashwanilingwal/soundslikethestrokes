@@ -52,6 +52,12 @@ export interface Telemetry {
   learnProgress: number;
   /** True once a room print exists and can be subtracted. */
   hasNoiseProfile: boolean;
+  /**
+   * The room's own level, as a linear amplitude the gate learned while it was
+   * shut. This is a measurement of the room specifically, not of the signal:
+   * it only updates when nobody is talking.
+   */
+  noiseFloor: number;
 }
 
 /**
@@ -159,6 +165,7 @@ class HardtuneProcessor extends AudioWorkletProcessor {
         hz: k.lastHz, clarity: k.lastClarity, midi: k.lastMidi,
         targetMidi: k.lastTargetMidi, rms: k.lastRms,
         learnProgress: k.lastLearnProgress, hasNoiseProfile: k.hasNoiseProfile,
+        noiseFloor: k.noiseFloor,
       });
     }
     return true;

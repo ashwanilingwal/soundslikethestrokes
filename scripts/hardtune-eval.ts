@@ -13,6 +13,7 @@ import { HardtuneKernel } from "../src/lib/dsp/hardtuneKernel";
 import { PROCESSOR_SOURCE } from "../src/lib/audio/graph";
 import { ARTISTS, CATEGORIES, resolveParams, voiceForCategory, voicesIn, VOICES } from "../src/lib/audio/voices";
 import { fromCsv, toCsv } from "../src/lib/audio/presetFile";
+import { assessRoom } from "../src/lib/roomCheck";
 import { CHROMATIC, majorMask, hzToMidi } from "../src/lib/dsp/scales";
 
 const SR = 48000;
@@ -476,6 +477,32 @@ function sine(hzAt: (t: number) => number, seconds: number, amp = 0.4): Float32A
     "q  room print cuts the room, voice survives",
     reductionDb < -8 && voiceRms > 0.15 && Math.abs(median - 220) < 6,
     `room ${reductionDb.toFixed(1)} dB, voice rms ${voiceRms.toFixed(3)}, pitch ${median.toFixed(1)} Hz`,
+  );
+}
+
+// -------------------------- (r) the room verdict matches its thresholds
+// The strip on the deck is the first thing that tells someone their room is
+// a problem, so the boundaries have to be the documented ones rather than
+// whatever the last edit left behind.
+{
+  const db = (d: number) => Math.pow(10, d / 20);
+  const cases: [number, string][] = [
+    [-70, "quiet"],
+    [-59, "quiet"],
+    [-57, "some"],
+    [-47, "some"],
+    [-45, "noisy"],
+    [-20, "noisy"],
+  ];
+  const wrong = cases.filter(([d, want]) => assessRoom(db(d), true).verdict !== want).map(([d, want]) => `${d}dB wanted ${want}, got ${assessRoom(db(d), true).verdict}`);
+  // Off-air, and a zero floor before anything has been measured, must both
+  // report "unknown" rather than claiming the room is silent.
+  const offAir = assessRoom(db(-20), false).verdict === "unknown";
+  const unmeasured = assessRoom(0, true).verdict === "unknown";
+  check(
+    "r  room verdict matches its thresholds",
+    wrong.length === 0 && offAir && unmeasured,
+    wrong.length ? wrong.join("; ") : `6 levels correct, off-air=${offAir}, unmeasured=${unmeasured}`,
   );
 }
 

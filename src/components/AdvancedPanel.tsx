@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import type { AdvancedParams } from "@/lib/audio/graph";
 import type { AudioDevice } from "@/lib/audio/devices";
 import type { VoiceParams } from "@/lib/audio/voices";
-import { ROOM_CAPTURE_SECONDS } from "@/hooks/useVoiceFx";
 import { copyFor } from "@/lib/controlCopy";
 import { NOTE_NAMES, type ScaleChoice } from "@/lib/dsp/scales";
 import { InfoButton } from "./InfoButton";
@@ -105,11 +104,7 @@ export function AdvancedPanel({
   onOutputDevice,
   onOverride,
   onCleanup,
-  onLearnRoom,
-  onClearRoom,
-  learnProgress,
   hasNoiseProfile,
-  canLearn,
   onScale,
   onReset,
   onNoiseCancellation,
@@ -129,12 +124,8 @@ export function AdvancedPanel({
   onOutputDevice: (id: string) => void;
   onOverride: (patch: Partial<VoiceParams>) => void;
   onCleanup: (patch: Partial<{ gateDb: number; denoise: number; noiseReduction: number }>) => void;
-  onLearnRoom: () => void;
-  onClearRoom: () => void;
-  /** 0..1 while measuring the room; 1 when idle. */
-  learnProgress: number;
+  /** Only gates the amount slider; measuring lives on the deck. */
   hasNoiseProfile: boolean;
-  canLearn: boolean;
   onScale: (choice: ScaleChoice) => void;
   onReset: () => void;
   onNoiseCancellation: (on: boolean) => void;
@@ -250,45 +241,18 @@ export function AdvancedPanel({
               <span className="mt-0.5 block leading-snug text-fg-dim">{copyFor("noiseCancellation").oneLiner}</span>
             </span>
           </label>
-          <div className="room-print">
-            <div className="room-print-head">
+          {/* The measure/undo action lives on the deck, where it is visible
+              without opening anything. Only the amount belongs in here. */}
+          {hasNoiseProfile && (
+            <div className="room-print">
               <span className="room-print-title">
-                Room print
+                Room print active
                 <InfoButton
                   term="room print"
-                  whatItDoes="Records a few seconds of your room with nobody speaking, measures the exact frequency fingerprint of whatever is humming in it, and subtracts that from everything after — including while you talk."
-                  inTheWild="Studios call this a noise print. It is how a room tone recorded on set gets used to strip air-conditioning off dialogue, and it removes far more than a gate can, because a gate only silences the gaps between words."
+                  whatItDoes="A few seconds of your room were measured and that exact frequency fingerprint is now being subtracted from everything, including underneath your voice while you talk."
+                  inTheWild="Studios call this a noise print. It is how room tone recorded on set gets used to strip air-conditioning off dialogue, and it removes far more than a gate can, because a gate only silences the gaps between words."
                 />
               </span>
-              <span className="room-print-state">
-                {learnProgress < 1
-                  ? `listening… ${Math.round(learnProgress * 100)}%`
-                  : hasNoiseProfile
-                    ? "room measured"
-                    : "no room measured yet"}
-              </span>
-            </div>
-            <div className="room-print-actions">
-              <button type="button" className="btn btn-sm" disabled={!canLearn || learnProgress < 1} onClick={onLearnRoom}>
-                {hasNoiseProfile ? "measure again" : `◉ measure the room (${ROOM_CAPTURE_SECONDS}s)`}
-              </button>
-              {hasNoiseProfile && (
-                <button type="button" className="btn btn-sm" onClick={onClearRoom}>
-                  forget it
-                </button>
-              )}
-            </div>
-            {learnProgress < 1 && (
-              <div className="meter" aria-label="measuring the room">
-                <div className="meter-fill" style={{ width: `${learnProgress * 100}%` }} />
-              </div>
-            )}
-            <p className="room-print-note">
-              {!canLearn
-                ? "Go live on the microphone first, then stay quiet while it listens."
-                : "Stay silent while it listens — anything you say gets treated as room noise and subtracted from your voice later."}
-            </p>
-            {hasNoiseProfile && (
               <Slider
                 id="noiseReduction"
                 value={cleanup.noiseReduction}
@@ -297,8 +261,8 @@ export function AdvancedPanel({
                 step={0.05}
                 onChange={(v) => onCleanup({ noiseReduction: v })}
               />
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
             <Slider id="denoise" value={cleanup.denoise} min={0} max={1} step={0.05} onChange={(v) => onCleanup({ denoise: v })} />
