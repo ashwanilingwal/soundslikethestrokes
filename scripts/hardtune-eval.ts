@@ -400,6 +400,31 @@ function sine(hzAt: (t: number) => number, seconds: number, amp = 0.4): Float32A
   );
 }
 
+// ------------------- (p) no voice sits outside the musical envelope
+// A distinctness pass once pushed several voices past "characterful" into
+// "broken": driving hard INTO a heavy sample-rate crush folds aliasing back
+// as fizz rather than grit, 70 cents of wobble reads as seasick rather than
+// tape flutter, and a big 1.8 kHz boost inside a narrow band just honks.
+// These bounds are what the voices people liked already satisfied.
+{
+  const faults: string[] = [];
+  for (const v of VOICES) {
+    // The crusher's sample-and-hold aliases; drive multiplies the harmonics
+    // that fold back, so the PRODUCT is what matters, not either alone.
+    if (v.drive * v.downsampleFactor > 20) {
+      faults.push(`${v.id}: drive×downsample=${(v.drive * v.downsampleFactor).toFixed(0)} (>20 aliases)`);
+    }
+    if (v.bits <= 10 && v.drive >= 9) faults.push(`${v.id}: ${v.bits}-bit at drive ${v.drive} is fizz, not grit`);
+    if (v.warbleCents > 40) faults.push(`${v.id}: ${v.warbleCents}c wobble is seasick`);
+    // Calibrated to the -auto voices, which are the agreed-good reference:
+    // julian-auto sits at +11 and sounds right, +13 did not.
+    if (v.presenceDb > 12) faults.push(`${v.id}: +${v.presenceDb}dB presence honks`);
+    // Dull: no bite AND no top is just a blanket over the voice.
+    if (v.presenceDb < 0 && v.lowpassHz < 5000) faults.push(`${v.id}: ${v.presenceDb}dB presence under a ${v.lowpassHz}Hz ceiling is muffled`);
+  }
+  check("p  every voice stays musically plausible", faults.length === 0, faults.length ? faults.slice(0, 3).join("; ") : `${VOICES.length} voices within bounds`);
+}
+
 // ------------------------- (f) worklet source round-trips through eval
 // The browser evaluates PROCESSOR_SOURCE (built from HardtuneKernel.toString())
 // in a scope with no module helpers. Stub the worklet globals and run the

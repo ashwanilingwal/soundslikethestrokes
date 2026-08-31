@@ -56,11 +56,36 @@ function Slider({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+/**
+ * Each group gets its own colour, glyph and one-line purpose.
+ *
+ * Six identical cyan headings gave no clue which knobs belonged together or
+ * why you would open one rather than another. The colour is carried on a
+ * custom property so the rule set stays one block rather than six.
+ */
+const GROUPS = {
+  io: { tint: "var(--fg-muted)", glyph: "⇄", title: "in / out", blurb: "Which microphone goes in, and where the sound comes out." },
+  clean: { tint: "var(--ok)", glyph: "◌", title: "clean-up / noise", blurb: "Removing everything that is not your voice." },
+  pitch: { tint: "var(--cyan)", glyph: "♪", title: "tuning / pitch", blurb: "How hard the pitch snaps, and which notes it is allowed to land on." },
+  dirt: { tint: "var(--accent)", glyph: "▲", title: "dirt / distortion", blurb: "Saturation and deliberate digital breakage." },
+  tone: { tint: "var(--amber)", glyph: "◐", title: "tone / eq", blurb: "Which frequencies survive, and which get thrown away." },
+  space: { tint: "#c08cff", glyph: "◜", title: "space / reverb & echo", blurb: "How far away, and in what kind of room." },
+} as const;
+
+function Section({ group, children }: { group: keyof typeof GROUPS; children: React.ReactNode }) {
+  const g = GROUPS[group];
   return (
-    <section className="flex flex-col gap-3">
-      <h3 className="caps text-cyan">{title}</h3>
-      <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">{children}</div>
+    <section className="tweak-section" style={{ ["--sec" as string]: g.tint }}>
+      <header className="tweak-head">
+        <span className="tweak-glyph" aria-hidden>
+          {g.glyph}
+        </span>
+        <span className="tweak-head-text">
+          <span className="tweak-title">{g.title}</span>
+          <span className="tweak-blurb">{g.blurb}</span>
+        </span>
+      </header>
+      <div className="tweak-body grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">{children}</div>
     </section>
   );
 }
@@ -151,7 +176,7 @@ export function AdvancedPanel({
           />
         </div>
 
-        <Section title="in / out">
+        <Section group="io">
           <label className="flex flex-col gap-1">
             <span className="text-xs text-fg-muted">microphone</span>
             <select value={inputDeviceId} onChange={(e) => onInputDevice(e.target.value)}>
@@ -184,9 +209,17 @@ export function AdvancedPanel({
           </label>
         </Section>
 
-        <section className="flex flex-col gap-3">
-          <h3 className="caps text-cyan">clean-up / noise</h3>
-          <label className="flex cursor-pointer items-start gap-3">
+        <section className="tweak-section" style={{ ["--sec" as string]: GROUPS.clean.tint }}>
+          <header className="tweak-head">
+            <span className="tweak-glyph" aria-hidden>
+              {GROUPS.clean.glyph}
+            </span>
+            <span className="tweak-head-text">
+              <span className="tweak-title">{GROUPS.clean.title}</span>
+              <span className="tweak-blurb">{GROUPS.clean.blurb}</span>
+            </span>
+          </header>
+          <label className="tweak-body flex cursor-pointer items-start gap-3">
             <input
               type="checkbox"
               checked={noiseCancellation}
@@ -211,9 +244,17 @@ export function AdvancedPanel({
           </div>
         </section>
 
-        <section className="flex flex-col gap-3">
-          <h3 className="caps text-cyan">tuning / pitch</h3>
-          <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+        <section className="tweak-section" style={{ ["--sec" as string]: GROUPS.pitch.tint }}>
+          <header className="tweak-head">
+            <span className="tweak-glyph" aria-hidden>
+              {GROUPS.pitch.glyph}
+            </span>
+            <span className="tweak-head-text">
+              <span className="tweak-title">{GROUPS.pitch.title}</span>
+              <span className="tweak-blurb">{GROUPS.pitch.blurb}</span>
+            </span>
+          </header>
+          <div className="tweak-body grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 sm:col-span-2">
               <span className="flex items-center gap-1.5 text-xs text-fg-muted">
                 {copyFor("key").label}
@@ -249,7 +290,7 @@ export function AdvancedPanel({
           </div>
         </section>
 
-        <Section title="dirt / distortion">
+        <Section group="dirt">
           <Slider id="drive" value={params.drive} min={1} max={20} step={0.5} onChange={(v) => onOverride({ drive: v })} />
           <Slider id="bits" value={params.bits} min={4} max={16} step={1} unit=" bit" onChange={(v) => onOverride({ bits: v })} />
           <Slider id="downsampleFactor" value={params.downsampleFactor} min={1} max={16} step={1} unit="×" onChange={(v) => onOverride({ downsampleFactor: v })} />
@@ -257,13 +298,13 @@ export function AdvancedPanel({
           <Slider id="warbleCents" value={params.warbleCents} min={0} max={100} step={1} unit="¢" onChange={(v) => onOverride({ warbleCents: v })} />
         </Section>
 
-        <Section title="tone / eq">
+        <Section group="tone">
           <Slider id="highpassHz" value={params.highpassHz} min={40} max={2000} step={10} unit=" Hz" format={(v) => String(Math.round(v))} onChange={(v) => onOverride({ highpassHz: v })} />
           <Slider id="lowpassHz" value={params.lowpassHz} min={800} max={20000} step={100} unit=" Hz" format={(v) => String(Math.round(v))} onChange={(v) => onOverride({ lowpassHz: v })} />
           <Slider id="presenceDb" value={params.presenceDb} min={-6} max={18} step={0.5} unit=" dB" onChange={(v) => onOverride({ presenceDb: v })} />
         </Section>
 
-        <Section title="space / reverb &amp; echo">
+        <Section group="space">
           <Slider id="roomMix" value={params.roomMix} min={0} max={1} step={0.02} onChange={(v) => onOverride({ roomMix: v })} />
           <Slider id="echoMs" value={params.echoMs} min={0} max={500} step={5} unit=" ms" format={(v) => (v === 0 ? "off" : String(Math.round(v)))} onChange={(v) => onOverride({ echoMs: v })} />
           <Slider id="echoFeedback" value={params.echoFeedback} min={0} max={0.75} step={0.01} onChange={(v) => onOverride({ echoFeedback: v })} />
