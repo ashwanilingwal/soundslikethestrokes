@@ -5,6 +5,7 @@ import { buildEffectChain, createContext, loadHardtuneModule } from "@/lib/audio
 import { resolveParams, VOICES } from "@/lib/audio/voices";
 import { HardtuneKernel } from "@/lib/dsp/hardtuneKernel";
 import { hzToMidi } from "@/lib/dsp/scales";
+import { LiveMicCheck } from "@/components/LiveMicCheck";
 
 /**
  * Everything the effect chain should do, measured without a microphone: an
@@ -216,6 +217,7 @@ export default function Page() {
       <pre id="out" className="num whitespace-pre-wrap text-xs leading-7">
         {lines.join("\n")}
       </pre>
+      <LiveMicCheck />
     </main>
   );
 }

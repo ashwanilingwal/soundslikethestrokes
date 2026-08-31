@@ -891,6 +891,57 @@ details[open] .panel-toggle-chev { transform: rotate(180deg); }
   color: var(--fg-muted);
 }
 
+/* --- live mic check -------------------------------------------------------------
+   The only test on the page that uses a real microphone, so it is visually
+   separated from the oscillator results above it. */
+
+.mic-check {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  max-width: 640px;
+  margin-top: 26px;
+  padding: 15px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--cyan) 35%, transparent);
+  background: color-mix(in srgb, var(--cyan) 6%, transparent);
+}
+.mic-check-head { display: flex; flex-direction: column; gap: 5px; }
+.mic-check-title {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+.mic-check-blurb { font-size: 12px; line-height: 1.6; color: var(--fg-muted); }
+
+/* The instruction has to be readable from arm's length: during the test the
+   person is looking at their microphone, not at the screen. */
+.mic-check-step {
+  padding: 11px 13px;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  line-height: 1.4;
+  border-left: 3px solid var(--room, var(--cyan));
+}
+.mic-check-step-quiet { --room: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); color: var(--fg); }
+.mic-check-step-talk { --room: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--fg); }
+.mic-check-error { font-size: 12px; line-height: 1.5; color: var(--accent-soft); }
+
+.mic-check-report {
+  font-family: var(--font-term), ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  padding: 11px 13px;
+  border-radius: var(--radius-sm);
+  background: var(--slot);
+  border: 1px solid var(--line);
+  color: var(--fg);
+  overflow-x: auto;
+}
+
 /* --- room check ----------------------------------------------------------------
    On the deck, so a noisy room announces itself instead of waiting to be
    discovered. One line when the room is quiet - the common case should cost
