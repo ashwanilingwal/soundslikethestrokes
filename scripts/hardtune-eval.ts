@@ -12,6 +12,7 @@
 import { HardtuneKernel } from "../src/lib/dsp/hardtuneKernel";
 import { PROCESSOR_SOURCE } from "../src/lib/audio/graph";
 import { ARTISTS, CATEGORIES, resolveParams, voiceForCategory, voicesIn, VOICES } from "../src/lib/audio/voices";
+import { fromCsv, toCsv } from "../src/lib/audio/presetFile";
 import { CHROMATIC, majorMask, hzToMidi } from "../src/lib/dsp/scales";
 
 const SR = 48000;
@@ -346,6 +347,56 @@ function sine(hzAt: (t: number) => number, seconds: number, amp = 0.4): Float32A
     "m  picker categories are well formed",
     problems.length === 0,
     `${CATEGORIES.length} categories, ${VOICES.length} voices${problems.length ? " -> " + problems.slice(0, 3).join("; ") : ""}`,
+  );
+}
+
+// ------------------------------------ (n) presets survive a CSV round trip
+{
+  const voice = VOICES[3];
+  const original = {
+    voiceId: voice.id,
+    macros: { match: 0.42, robot: 0.15, volume: 1.35 },
+    cleanup: { gateDb: -47, denoise: 0.55 },
+    params: { drive: 7.5, roomMix: 0.42, echoMs: 190, echoFeedback: 0.31, echoMix: 0.24, semitoneShift: -2 },
+  };
+  const back = fromCsv(toCsv(original));
+  const p = back.preset;
+  const same =
+    p !== null &&
+    p.voiceId === original.voiceId &&
+    Math.abs(p.macros.match - 0.42) < 1e-9 &&
+    Math.abs(p.macros.volume - 1.35) < 1e-9 &&
+    Math.abs(p.cleanup.gateDb - -47) < 1e-9 &&
+    Math.abs((p.params.drive ?? 0) - 7.5) < 1e-9 &&
+    Math.abs((p.params.echoMs ?? 0) - 190) < 1e-9 &&
+    p.params.semitoneShift === -2;
+  check("n  preset survives CSV round trip", same && back.warnings.length === 0, `${back.warnings.length} warnings`);
+}
+
+// ------------------- (o) a hand-mangled CSV loads what it can, drops the rest
+{
+  const messy = [
+    "# hand edited",
+    "parameter,value",
+    "voice,not-a-real-voice",
+    "drive,9999",              // out of range
+    "roomMix,0.5",             // fine
+    "wobbliness,3",            // unknown key
+    "echoMs,not-a-number",     // unparseable
+    "semitoneShift,2.7",       // rounds to an integer
+  ].join("\n");
+  const r = fromCsv(messy);
+  const ok =
+    r.preset !== null &&
+    Math.abs((r.preset.params.roomMix ?? 0) - 0.5) < 1e-9 &&
+    r.preset.params.drive === undefined &&
+    r.preset.params.echoMs === undefined &&
+    r.preset.params.semitoneShift === 3 &&
+    r.warnings.length === 4;
+  check(
+    "o  bad CSV rows are dropped, good ones survive",
+    ok,
+    `${r.warnings.length} warnings, roomMix=${r.preset?.params.roomMix}, shift=${r.preset?.params.semitoneShift}`,
   );
 }
 

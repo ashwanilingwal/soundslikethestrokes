@@ -281,6 +281,25 @@ export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): Ef
   presence.frequency.value = 1800;
   presence.Q.value = 0.9;
 
+  /**
+   * Echo as a parallel send, alongside the reverb rather than feeding it.
+   *
+   * The feedback path is damped by a lowpass, so each repeat returns darker
+   * than the last. That is what a tape or spring echo does, and it is why
+   * undamped digital delay rings brightly and unnaturally - the repeats never
+   * lose anything, so they sit on top of the voice instead of behind it.
+   * maxDelay is 1s, well past the 500ms the UI allows, because a DelayNode
+   * cannot be resized after construction.
+   */
+  const echo = ctx.createDelay(1.0);
+  const echoDamp = ctx.createBiquadFilter();
+  echoDamp.type = "lowpass";
+  echoDamp.frequency.value = 3000;
+  const echoFeedback = ctx.createGain();
+  echoFeedback.gain.value = 0;
+  const echoWet = ctx.createGain();
+  echoWet.gain.value = 0;
+
   // Reverb as a parallel send: dry stays intact, the room is added beside it.
   const roomSend = ctx.createConvolver();
   roomSend.buffer = makeRoomIR(ctx);
@@ -311,6 +330,9 @@ export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): Ef
 
   hardtune.connect(shaper).connect(highpass).connect(presence).connect(lowpass).connect(master).connect(limiter);
   lowpass.connect(roomSend).connect(roomWet).connect(master);
+  lowpass.connect(echo);
+  echo.connect(echoDamp).connect(echoFeedback).connect(echo);
+  echo.connect(echoWet).connect(master);
   limiter.connect(safety);
   // Taps sit after the safety stage: what you hear is what you record.
   safety.connect(analyser);
@@ -328,6 +350,10 @@ export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): Ef
     param.setTargetAtTime(value, ctx.currentTime, 0.02);
   };
 
+  // The echo send depends on two params at once, and they arrive separately.
+  let lastEchoMs = initial.echoMs;
+  let lastEchoMix = initial.echoMix;
+
   const setParams = (p: Partial<AdvancedParams>) => {
     if (p.dryWet !== undefined) ramp(dryWetParam, p.dryWet);
     if (p.retuneGlideMs !== undefined) glideParam.setValueAtTime(p.retuneGlideMs, ctx.currentTime);
@@ -337,6 +363,19 @@ export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): Ef
     if (p.lowpassHz !== undefined) ramp(lowpass.frequency, p.lowpassHz);
     if (p.presenceDb !== undefined) ramp(presence.gain, p.presenceDb);
     if (p.roomMix !== undefined) ramp(roomWet.gain, p.roomMix);
+    if (p.echoMs !== undefined) {
+      // Stepped, not ramped: gliding a delay line resamples what is already
+      // inside it and audibly bends the pitch of the repeats.
+      echo.delayTime.setValueAtTime(Math.min(1, Math.max(0, p.echoMs / 1000)), ctx.currentTime);
+    }
+    if (p.echoFeedback !== undefined) ramp(echoFeedback.gain, Math.min(0.75, Math.max(0, p.echoFeedback)));
+    if (p.echoMix !== undefined || p.echoMs !== undefined) {
+      if (p.echoMs !== undefined) lastEchoMs = p.echoMs;
+      if (p.echoMix !== undefined) lastEchoMix = p.echoMix;
+      // echoMs === 0 means "off": silence the send rather than leave a
+      // zero-length delay chattering round the feedback loop.
+      ramp(echoWet.gain, lastEchoMs > 0 ? lastEchoMix : 0);
+    }
     if (p.masterGain !== undefined) ramp(master.gain, p.masterGain);
     if (p.bits !== undefined || p.downsampleFactor !== undefined) {
       hardtune.port.postMessage({ bits: p.bits, downsampleFactor: p.downsampleFactor });
@@ -358,6 +397,9 @@ export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): Ef
   lowpass.frequency.value = initial.lowpassHz;
   presence.gain.value = initial.presenceDb;
   roomWet.gain.value = initial.roomMix;
+  echo.delayTime.value = Math.min(1, Math.max(0, initial.echoMs / 1000));
+  echoFeedback.gain.value = Math.min(0.75, initial.echoFeedback);
+  echoWet.gain.value = initial.echoMs > 0 ? initial.echoMix : 0;
   master.gain.value = initial.masterGain;
   setParams(initial);
 
@@ -384,6 +426,10 @@ export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): Ef
         lowpass.disconnect();
         roomSend.disconnect();
         roomWet.disconnect();
+        echo.disconnect();
+        echoDamp.disconnect();
+        echoFeedback.disconnect();
+        echoWet.disconnect();
         master.disconnect();
         limiter.disconnect();
         safety.disconnect();

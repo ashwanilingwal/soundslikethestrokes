@@ -11,8 +11,9 @@ import {
   type VoiceGraph,
 } from "@/lib/audio/graph";
 import { canChooseOutput, listDevices, subscribeDevices, type AudioDevice } from "@/lib/audio/devices";
-import { DEFAULT_VOICE, resolveParams, type Voice, type VoiceParams } from "@/lib/audio/voices";
+import { DEFAULT_VOICE, resolveParams, VOICES, type Voice, type VoiceParams } from "@/lib/audio/voices";
 import { maskFor, type ScaleChoice } from "@/lib/dsp/scales";
+import { fromCsv, presetFilename, toCsv, type PresetFile } from "@/lib/audio/presetFile";
 
 /**
  * Microphone -> effect chain, for the stage.
@@ -287,6 +288,41 @@ export function useVoiceFx() {
     };
   }, []);
 
+  /** The current sound as a portable file, including any hand-tuned values. */
+  const exportPreset = useCallback(() => {
+    const preset: PresetFile = { voiceId: voice.id, macros, cleanup, params: overrides };
+    const blob = new Blob([toCsv(preset)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = presetFilename(voice);
+    a.click();
+    // Revoke on the next tick: revoking synchronously can beat the download
+    // in some browsers and produce an empty file.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }, [voice, macros, cleanup, overrides]);
+
+  /** Load a preset CSV. Returns any warnings so the UI can surface them. */
+  const importPreset = useCallback(async (file: File): Promise<string[]> => {
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      return ["That file could not be read."];
+    }
+    const { preset, warnings } = fromCsv(text);
+    if (!preset) return warnings;
+
+    const next = VOICES.find((v) => v.id === preset.voiceId);
+    if (next) setVoice(next);
+    setMacros(preset.macros);
+    setCleanup(preset.cleanup);
+    // Imported values land as overrides, which is what pins them against the
+    // macro maths - otherwise resolveParams would immediately recompute them.
+    setOverrides(preset.params);
+    return warnings;
+  }, []);
+
   useEffect(() => () => graphRef.current?.stop(), []);
 
   return {
@@ -328,5 +364,7 @@ export function useVoiceFx() {
     toggleTransport,
     selectInputDevice,
     selectOutputDevice,
+    exportPreset,
+    importPreset,
   };
 }

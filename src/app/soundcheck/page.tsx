@@ -164,12 +164,38 @@ export default function Page() {
       chain.setParams({ roomMix: 0 });
       say(`F. room tail after cut: dry ${dryTail.toExponential(2)} vs wet ${wetTail.toExponential(2)}  ${wetTail > dryTail * 5 && wetTail > 1e-3 ? "PASS" : "FAIL"}`);
 
-      // G. recorder stream + mime support.
+      // G. the echo: after the source is cut, repeats must keep arriving.
+      chain.setParams({ drive: 2, masterGain: 1, roomMix: 0, echoMs: 0, echoFeedback: 0, echoMix: 0 });
+      oscGain.gain.value = 0.35;
+      const tailWithEcho = async (label: string) => {
+        await waitTicks(8);
+        oscGain.gain.setValueAtTime(0, ctx.currentTime);
+        // Past the ~35 ms grain tail, inside where a 250 ms echo still rings.
+        await waitTicks(6);
+        let sum = 0;
+        let count = 0;
+        for (let i = 0; i < 8; i++) {
+          an.getFloatTimeDomainData(buf);
+          for (const v of buf) sum += v * v;
+          count += buf.length;
+          await waitTicks(1);
+        }
+        oscGain.gain.setValueAtTime(0.35, ctx.currentTime);
+        say(`   ${label}: rms ${Math.sqrt(sum / count).toExponential(2)}`);
+        return Math.sqrt(sum / count);
+      };
+      const noEchoTail = await tailWithEcho("echo off");
+      chain.setParams({ echoMs: 250, echoFeedback: 0.55, echoMix: 0.5 });
+      const echoTail = await tailWithEcho("echo 250ms");
+      chain.setParams({ echoMs: 0, echoFeedback: 0, echoMix: 0 });
+      say(`G. echo repeats after the source stops  ${echoTail > noEchoTail * 8 && echoTail > 1e-3 ? "PASS" : "FAIL"}`);
+
+      // H. recorder stream + mime support.
       const mime = ["audio/webm;codecs=opus", "audio/mp4"].find((m) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(m));
       const tracks = chain.recorderStream.getAudioTracks().length;
-      say(`G. recorder: ${tracks} audio track(s), mime ${mime ?? "browser default"}  ${tracks === 1 ? "PASS" : "FAIL"}`);
+      say(`H. recorder: ${tracks} audio track(s), mime ${mime ?? "browser default"}  ${tracks === 1 ? "PASS" : "FAIL"}`);
 
-      say(`H. latency (informational): base ${((ctx.baseLatency ?? 0) * 1000).toFixed(1)} ms, output ${((ctx.outputLatency ?? 0) * 1000).toFixed(1)} ms`);
+      say(`I. latency (informational): base ${((ctx.baseLatency ?? 0) * 1000).toFixed(1)} ms, output ${((ctx.outputLatency ?? 0) * 1000).toFixed(1)} ms`);
 
       osc.stop();
       chain.disconnect();

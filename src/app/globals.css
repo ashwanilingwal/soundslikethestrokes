@@ -595,6 +595,125 @@ body {
 }
 @keyframes rec-blink { 50% { opacity: 0.25; } }
 
+/* --- the controls panel --------------------------------------------------------
+   Was a 9px "fine tuning" label that read as a footnote, so nobody opened it.
+   Now a full-width bar with a lit chevron: still closed by default (the
+   one-screen rule depends on that) but unmistakably a door. */
+
+.panel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, rgba(34, 223, 255, 0.1), rgba(34, 223, 255, 0.03));
+  border: 1px solid rgba(34, 223, 255, 0.35);
+  cursor: pointer;
+  list-style: none;
+  transition: border-color 130ms ease, background 130ms ease;
+}
+.panel-toggle::-webkit-details-marker { display: none; }
+.panel-toggle::before { content: none; }
+.panel-toggle:hover { border-color: var(--cyan); background: rgba(34, 223, 255, 0.13); }
+details[open] .panel-toggle { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+
+.panel-toggle-title {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+.panel-toggle-sub {
+  min-width: 0;
+  flex: 1;
+  font-size: 11px;
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.panel-toggle-chev {
+  font-size: 11px;
+  color: var(--cyan);
+  transition: transform 160ms ease;
+}
+details[open] .panel-toggle-chev { transform: rotate(180deg); }
+
+/* Save / load sits at the top of the panel: it acts on everything below it. */
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+}
+.preset-note { flex: 1 1 12rem; min-width: 0; font-size: 11px; line-height: 1.4; color: var(--fg-dim); }
+.preset-warn { color: var(--amber); }
+
+/* --- info popovers -------------------------------------------------------------
+   A popover, not a tooltip: hover does not exist on a phone, and these hold
+   more than a title attribute would show. */
+
+.info-wrap { position: relative; display: inline-flex; vertical-align: middle; }
+
+.info-btn {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--fg-dim);
+  font-family: var(--font-grotesk), serif;
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+.info-btn:hover, .info-btn-on { color: #05202a; background: var(--cyan); border-color: var(--cyan); }
+.info-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+.info-pop {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: max-content;
+  max-width: min(17rem, 78vw);
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  background: #0c0e12;
+  border: 1px solid var(--cyan);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.75), 0 0 18px rgba(34, 223, 255, 0.18);
+  text-align: left;
+  white-space: normal;
+}
+
+.info-pop-term {
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+.info-pop-body { font-size: 11px; line-height: 1.45; color: var(--fg); }
+.info-pop-wild {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--fg-muted);
+  padding-top: 5px;
+  border-top: 1px solid var(--line);
+}
+
 /* --- chips ---------------------------------------------------------------------- */
 
 .chip {
@@ -739,6 +858,16 @@ details[open] > summary::before { content: "▾ "; }
   .seg-year { font-size: 10px; }
   .sleeve-art { max-width: 34px; }
   .vinyl-caption { font-size: 11px; }
+  /* The toggle bar is the price of making the panel findable; on a short
+     screen it pays that back from its own padding and its subtitle. */
+  .panel-toggle { padding: 5px 10px; }
+  /* Three macro faders are the tallest block on the stage; 4px off each
+     track is invisible and buys back most of what the toggle bar cost. */
+  input[type="range"] { height: 16px; }
+  input[type="range"]::-webkit-slider-thumb { height: 16px; margin-top: -6.5px; }
+  .chip { padding: 2px 8px; }
+  .panel-toggle-title { font-size: 11px; }
+  .panel-toggle-sub { display: none; }
   .vinyl-cta { padding: 3px 10px; font-size: 10px; }
   .sleeve-btn { gap: 2px; padding: 2px 2px 3px; }
   .stage { gap: 5px; padding: 4px 8px 6px; }

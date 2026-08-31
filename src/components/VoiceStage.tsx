@@ -141,6 +141,8 @@ export function VoiceStage() {
             onScale={fx.selectScale}
             onReset={fx.resetOverrides}
             onNoiseCancellation={fx.toggleNoiseCancellation}
+            onExport={fx.exportPreset}
+            onImport={fx.importPreset}
           />
         </div>
 
