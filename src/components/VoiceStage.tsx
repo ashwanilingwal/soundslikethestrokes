@@ -22,8 +22,13 @@ import { VoicePicker } from "./VoicePicker";
  * (record + readout) and the controls sit side by side once there is width
  * for it, and stack on a phone. Only the fine-tuning panel, which is closed
  * by default, can push the page past one screen.
+ *
+ * `children` is the below-the-fold prose (SiteCopy). It arrives as a prop
+ * rather than an import so it can stay a SERVER component - that keeps the
+ * page's readable text in the initial HTML for crawlers without adding a byte
+ * to this client bundle.
  */
-export function VoiceStage() {
+export function VoiceStage({ children }: { children?: React.ReactNode }) {
   const fx = useVoiceFx();
   const recorder = useRecorder(fx.recorderStream);
   const consent = useConsent();
@@ -166,22 +171,32 @@ export function VoiceStage() {
 
         {/* Below the fold by design — see AdSlot. */}
         <AdSlot />
-
-        {/* Outside the window, sitting on the desktop — so it takes the
-            light-on-blue treatment rather than the window's dark ink. */}
-        <footer className="stage-footer text-center text-[10px] leading-tight text-white/60">
-          Runs entirely in your browser. Era-inspired voice characters and original label art — not clones, not the real
-          sleeves.
-          {consent.trackingConfigured && consent.consent !== "unknown" && (
-            <>
-              {" · "}
-              <button type="button" className="consent-reopen" onClick={consent.reconsider}>
-                cookie choices
-              </button>
-            </>
-          )}
-        </footer>
       </main>
+
+      {/* Everything below here is OUTSIDE <main>, and that placement is the
+          load-bearing part. .stage is a flex column whose window fills the
+          screen via flex:1, which only works while there is free space to
+          distribute — put a long article inside it and the container
+          overflows, the free space goes to zero, and the deck silently
+          collapses to its content height. Kept as siblings of a
+          min-height:100dvh main, the deck fills the first screen no matter
+          how much reading matter follows it. */}
+      {children}
+
+      {/* Sitting on the desktop rather than in the window — so it takes the
+          light ink rather than the window's dark. */}
+      <footer className="stage-footer text-center text-[10px] leading-tight text-white/60">
+        Runs entirely in your browser. Era-inspired voice characters and original label art — not clones, not the real
+        sleeves.
+        {consent.trackingConfigured && consent.consent !== "unknown" && (
+          <>
+            {" · "}
+            <button type="button" className="consent-reopen" onClick={consent.reconsider}>
+              cookie choices
+            </button>
+          </>
+        )}
+      </footer>
     </>
   );
 }

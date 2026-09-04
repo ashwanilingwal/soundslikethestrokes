@@ -1186,6 +1186,60 @@ details[open] > summary::before { content: "▾ "; }
   overflow: hidden;
 }
 
+/* --- below-the-fold reading ---------------------------------------------------------
+   The page's crawlable text, and the only part of it that scrolls. Set as an
+   ARTICLE, not as more front panel: prose in 11px engraved legend would look
+   consistent and go unread, and a page people bounce straight off does not
+   rank however good its markup is. Same reasoning as the guide page. */
+
+.site-copy {
+  width: 100%;
+  max-width: 68ch;
+  margin: 0 auto;
+  /* Its own gutters: this sits outside .stage now, so it inherits none of the
+     stage's horizontal padding and would otherwise touch a phone's edges. */
+  padding: 24px 14px 10px;
+  border-top: 1px solid var(--line);
+  color: var(--fg-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.site-copy h2 {
+  margin: 30px 0 12px;
+  color: var(--fg);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.site-copy h2:first-child { margin-top: 0; }
+
+.site-copy h3 {
+  margin: 22px 0 6px;
+  color: var(--cyan);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.site-copy p { margin: 0 0 12px; }
+
+.site-copy-list { margin: 0 0 12px; padding-left: 18px; list-style: none; }
+.site-copy-list li { position: relative; margin-bottom: 7px; }
+.site-copy-list li::before { content: "\25B8"; position: absolute; left: -18px; color: var(--accent); }
+
+/* Questions read as headings, answers as body — the shape someone scanning
+   for their own question expects, and the shape the FAQPage markup claims. */
+.site-copy-qa { margin-bottom: 16px; }
+.site-copy-qa h3 { margin-top: 0; color: var(--fg); font-size: 15px; }
+.site-copy-qa p { margin-bottom: 0; }
+
+.site-copy-more { margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--line); }
+
+.site-copy a { color: var(--cyan); text-decoration: underline; text-underline-offset: 3px; }
+.site-copy a:hover { color: var(--fg); }
+
 /* --- consent bar -------------------------------------------------------------------
    Fixed, so it never enters the flow and cannot break the one-screen layout. */
 
@@ -1296,8 +1350,17 @@ details[open] > summary::before { content: "▾ "; }
   .stage-window { gap: 4px; }
 }
 
+/* Outside .stage as of the SEO section, so it needs its own centring. It used
+   to be hidden below 620px tall to buy back space inside the one-screen
+   budget; it is under the fold now, so that rule is gone and the "cookie
+   choices" control stays reachable on a short screen. */
+.stage-footer {
+  max-width: 960px;
+  margin: 4px auto 0;
+  padding: 0 14px 14px;
+}
+
 @media (max-height: 620px) {
-  .stage-footer { display: none; }
   .voice-varies { -webkit-line-clamp: 1; }
   .vinyl-btn { width: clamp(78px, 20vw, 106px); }
   .stage { gap: 3px; }

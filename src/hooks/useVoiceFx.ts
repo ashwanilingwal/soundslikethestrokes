@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   MicError,
   startFileGraph,
@@ -14,6 +14,22 @@ import { canChooseOutput, listDevices, subscribeDevices, type AudioDevice } from
 import { DEFAULT_VOICE, resolveParams, VOICES, type Voice, type VoiceParams } from "@/lib/audio/voices";
 import { maskFor, type ScaleChoice } from "@/lib/dsp/scales";
 import { fromCsv, presetFilename, toCsv, type PresetFile } from "@/lib/audio/presetFile";
+
+/**
+ * `canChooseOutput()` asks whether AudioContext has setSinkId, which is false
+ * on the server (no AudioContext at all) and true in Chromium — so reading it
+ * straight during render made the server and the client disagree about
+ * whether the output <select> is disabled, and React threw away the whole
+ * server tree with a hydration error on every load.
+ *
+ * useSyncExternalStore is the supported way to say "the server sees this, the
+ * client sees that": React hydrates with the server snapshot and swaps in the
+ * client value on the next commit, with no mismatch. Same pattern the consent
+ * store uses. The capability cannot change while the page is open, so the
+ * subscribe callback has nothing to listen to.
+ */
+const neverChanges = () => () => {};
+const outputChoiceOnServer = () => false;
 
 /**
  * Microphone -> effect chain, for the stage.
@@ -59,6 +75,7 @@ export function useVoiceFx() {
     inputs: [],
     outputs: [],
   });
+  const canChoose = useSyncExternalStore(neverChanges, canChooseOutput, outputChoiceOnServer);
   const [inputDeviceId, setInputDeviceId] = useState("");
   const [outputDeviceId, setOutputDeviceId] = useState("");
 
@@ -382,7 +399,7 @@ export function useVoiceFx() {
     devices,
     inputDeviceId,
     outputDeviceId,
-    canChooseOutput: canChooseOutput(),
+    canChooseOutput: canChoose,
     selectSource,
     pickFile,
     toggleTransport,

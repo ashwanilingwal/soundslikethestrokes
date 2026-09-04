@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, VT323 } from "next/font/google";
 import { ConsentProvider } from "@/components/ConsentProvider";
 import { ADSENSE_CLIENT, adsEnabled } from "@/lib/ads";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 /**
@@ -16,9 +17,73 @@ import "./globals.css";
 const grotesk = Space_Grotesk({ variable: "--font-grotesk", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 const term = VT323({ variable: "--font-term", subsets: ["latin"], weight: "400" });
 
+/**
+ * Search Console verification, if you have set it up. Not required to be
+ * indexed - Google finds the site either way - but it is how you submit the
+ * sitemap and see what you actually rank for, which is the only feedback loop
+ * that exists for SEO. Server-side only, so no NEXT_PUBLIC_ prefix.
+ */
+const googleVerification = process.env.GOOGLE_SITE_VERIFICATION?.trim();
+
 export const metadata: Metadata = {
-  title: "soundslikethestrokes",
-  description: "Speak into the mic, hear a hard-autotuned, blown-out megaphone version of yourself. Live.",
+  /**
+   * Every relative URL below (canonicals, og:image, the sitemap) is resolved
+   * against this. Without it, Next throws at build time on the first relative
+   * metadata URL.
+   */
+  metadataBase: new URL(SITE_URL),
+
+  title: {
+    /**
+     * The made-up brand word goes LAST. A search result is scanned left to
+     * right and truncated around 60 characters, so the first half has to be
+     * the thing someone was looking for - "soundslikethestrokes" is a name
+     * with no search volume until the site has an audience.
+     */
+    default: `${SITE_TITLE} · ${SITE_NAME}`,
+    template: `%s · ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  category: "music",
+
+  alternates: { canonical: "/" },
+
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} — ${SITE_TITLE}`,
+    description: SITE_DESCRIPTION,
+    url: "/",
+    locale: "en_US",
+    // og:image comes from app/opengraph-image.tsx, which Next wires up on its
+    // own - declaring it here as well would emit the tag twice.
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} — ${SITE_TITLE}`,
+    description: SITE_DESCRIPTION,
+  },
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      /**
+       * The three that decide how much of the page a result can show. Left
+       * unset, Google picks conservative defaults and the OG card may not be
+       * used as a thumbnail at all.
+       */
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+
+  ...(googleVerification ? { verification: { google: googleVerification } } : {}),
+
   /**
    * AdSense site verification, meta-tag method.
    *
