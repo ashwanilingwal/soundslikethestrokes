@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the template, which is documentation and holds only empty keys.
+# The stock .env* rule was swallowing it, so the setup instructions for
+# AdSense, Analytics and Search Console never reached the repo.
+!.env.example
 
 # vercel
 .vercel
