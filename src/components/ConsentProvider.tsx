@@ -1,19 +1,21 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
 import Script from "next/script";
-import { GoogleAnalytics } from "@next/third-parties/google";
 import { ADSENSE_CLIENT, adsEnabled } from "@/lib/ads";
-import { GA_ID, analyticsEnabled } from "@/lib/analytics";
+import { analyticsEnabled, updateGoogleConsent } from "@/lib/analytics";
 import { readConsent, serverConsent, subscribeConsent, writeConsent, type ConsentState } from "@/lib/consent";
 import { ConsentBanner } from "./ConsentBanner";
 
 /**
- * Owns consent, and owns every third-party script that depends on it.
+ * Owns consent, and applies it to the two Google tags in the two ways they
+ * need.
  *
- * The Google tags live HERE rather than in the layout, because that is the
- * only way the gate can actually be a gate: a script rendered by a server
- * layout is in the HTML before any client-side choice exists.
+ * Analytics is always on the page (root layout, Consent Mode v2, cookies
+ * denied by default) and this provider FLIPS its consent flags when the
+ * banner is answered. Ads are withheld entirely: the AdSense script lives
+ * here and is not rendered until the visitor says yes, because serving ads
+ * without consent is a different legal question from an anonymous ping.
  */
 
 interface ConsentApi {
@@ -64,11 +66,18 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
   const showScripts = trackingConfigured && consent === "granted";
   const showBanner = trackingConfigured && consent === "unknown";
 
+  // Tell gtag what the visitor decided - including a stored decision from a
+  // previous visit, which is why this runs on mount too. "unknown" sends
+  // nothing: the default (denied) is already in force.
+  useEffect(() => {
+    if (!analyticsEnabled || consent === "unknown") return;
+    updateGoogleConsent(consent === "granted");
+  }, [consent]);
+
   return (
     <ConsentContext.Provider value={api}>
       {children}
 
-      {showScripts && analyticsEnabled && <GoogleAnalytics gaId={GA_ID} />}
       {showScripts && adsEnabled && (
         <Script
           id="adsbygoogle-init"

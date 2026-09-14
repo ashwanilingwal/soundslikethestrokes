@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, VT323 } from "next/font/google";
 import { ConsentProvider } from "@/components/ConsentProvider";
 import { ADSENSE_CLIENT, adsEnabled } from "@/lib/ads";
+import { CONSENT_DEFAULT, GA_ID, analyticsEnabled } from "@/lib/analytics";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
@@ -104,10 +105,27 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${grotesk.variable} ${term.variable} h-full antialiased`}>
+      {analyticsEnabled && (
+        <head>
+          {/* Google Analytics under Consent Mode v2, as two RAW script tags in
+              document order - not next/script. Order is the whole point: the
+              consent default (everything denied) must be queued before
+              gtag.js runs, or the tag starts with cookies allowed. An inline
+              <script> in <head> executes at parse time; a `defer` script
+              with a src is rendered in place by React (only `async` scripts
+              get hoisted) and runs after parsing - so default-then-tag is
+              fixed by position. next/script's beforeInteractive was tried
+              first and put the inline half in the BODY in production, which
+              is exactly the race this avoids. Being in the raw HTML is also
+              what lets Google's tag detection see the tag - one rendered only
+              after the banner is accepted never was. The ADS script is
+              different: it lives in the provider and is not rendered at all
+              until consent. */}
+          <script dangerouslySetInnerHTML={{ __html: `${CONSENT_DEFAULT}gtag('js',new Date());gtag('config','${GA_ID}');` }} />
+          <script defer src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} />
+        </head>
+      )}
       <body className="min-h-full grain">
-        {/* Every third-party tag now lives inside the provider - a script
-            rendered here, in a server layout, would be in the HTML before any
-            consent choice could exist, which is not a gate. */}
         <ConsentProvider>{children}</ConsentProvider>
       </body>
     </html>

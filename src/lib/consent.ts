@@ -1,10 +1,11 @@
 /**
  * Cookie consent, stored per browser, exposed as an external store.
  *
- * The gate is a hard one: until the visitor chooses, no Google script is
- * rendered at all, so nothing can set a cookie or fire a beacon. That is
- * simpler to reason about - and to verify - than loading the tags and asking
- * them nicely to behave.
+ * Two gates of different hardness. Ads: until the visitor chooses, the
+ * AdSense script is not rendered at all. Analytics: the gtag is always
+ * present under Consent Mode v2 with every storage type denied - it sets no
+ * cookie and sends only anonymous pings until "granted" is pushed - because
+ * a tag that is absent until Accept is a tag Google's detector can never see.
  *
  * Modelled as a subscribable store rather than React state because that is
  * what localStorage actually is: mutable data owned outside React, which can

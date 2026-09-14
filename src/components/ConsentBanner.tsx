@@ -17,8 +17,8 @@ export function ConsentBanner({
     <div className="consent-bar" role="region" aria-label="cookie choices">
       <p className="consent-copy">
         <span className="font-semibold text-fg">Analytics and ads use cookies.</span>{" "}
-        Only loaded if you say yes. The voice effect itself is entirely local — your audio never leaves the browser
-        either way.
+        None are set unless you say yes — until then Google gets only anonymous, cookieless pings, and no ads load.
+        The voice effect itself is entirely local; your audio never leaves the browser either way.
       </p>
       <div className="consent-actions">
         <button type="button" className="btn btn-sm" onClick={onDecline}>

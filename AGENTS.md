@@ -335,21 +335,37 @@ behalf): sign up, add the domain, copy the `ca-pub-…` id and a display unit's
 slot id into Vercel's env vars, redeploy, then confirm `/ads.txt` returns the
 publisher line. Two things worth knowing before counting on revenue: AdSense
 reviews sites for substantive content, and a single-page toy may not be
-approved; and serving ads in the EEA/UK needs a consent mechanism, which this
-app does not currently have.
+approved; and serving ads in the EEA/UK needs consent, which is why the
+AdSense script is not rendered at all until the banner is accepted
+(`ConsentProvider`).
 
 ## Analytics (GA4)
 
-Google Analytics 4 via `@next/third-parties/google`, gated on
-`NEXT_PUBLIC_GA_ID` exactly like the ads — nothing loads without it, so dev
-and the soundcheck stay free of third-party scripts. `lib/analytics.ts` holds
-the gate; the component sits in the root layout.
+Google Analytics 4 under **Consent Mode v2**. The measurement id is
+committed in `lib/analytics.ts` (public by design; env override). The root
+layout renders two RAW `<script>` tags in an explicit `<head>`, in document
+order: an inline block (consent default with every storage type denied, then
+`js`, then `config`) and a `defer` gtag.js. Order is the point — the default
+must be queued before gtag.js runs, or it starts with cookies allowed. Not
+`next/script`: `beforeInteractive` put the inline half in the *body* in the
+production build while the external half went to `<head>`, which is the
+race. Raw inline runs at parse time; `defer` (not `async`, which React
+hoists) is rendered in place and runs after parsing. `ConsentProvider`
+pushes `consent update` when the banner is answered, including a stored
+answer on mount.
+
+Why not simply withhold the tag until Accept, as the ads script is? That was
+the first design, and it was a fine gate — but Google's tag detection fetches
+the page and never clicks Accept, so "Your Google tag wasn't detected" was
+the permanent verdict. Consent Mode is Google's own answer: the tag is in the
+HTML (detectable), sets no cookie and sends only anonymous pings until
+consent, then behaves normally. The stricter EU reading prefers withholding
+entirely; flipping back is a matter of moving the three scripts into the
+provider behind `showScripts`.
 
 Vercel Web Analytics was the first choice (cookieless, first-party) but its
-free allowance is small, so GA4 won on cost. The trade-off is real and worth
-remembering: **GA4 sets cookies**, so it is non-essential under GDPR/UK PECR
-and needs a consent mechanism for EEA/UK visitors. Combined with AdSense,
-that is now two reasons this app wants a consent banner it does not have.
+free allowance is small, so GA4 won on cost. **GA4 sets cookies** once
+consented, which is why the banner exists.
 
 The id is the *Measurement ID* (`G-XXXXXXXXXX`) from Admin → Data streams →
 Web — not the numeric Stream ID beside it, and not a `UA-` id (GA3, dead).
