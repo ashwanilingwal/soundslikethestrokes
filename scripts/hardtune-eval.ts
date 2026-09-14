@@ -9,9 +9,11 @@
  * pitch measurement with zero duplicated DSP.
  */
 
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { HardtuneKernel } from "../src/lib/dsp/hardtuneKernel";
 import { PROCESSOR_SOURCE } from "../src/lib/audio/graph";
-import { ARTISTS, CATEGORIES, resolveParams, voiceForCategory, voicesIn, VOICES } from "../src/lib/audio/voices";
+import { ARTIST_PORTRAIT, ARTISTS, CATEGORIES, resolveParams, voiceForCategory, voicesIn, VOICES } from "../src/lib/audio/voices";
 import { fromCsv, toCsv } from "../src/lib/audio/presetFile";
 import { assessRoom } from "../src/lib/roomCheck";
 import { CHROMATIC, majorMask, hzToMidi } from "../src/lib/dsp/scales";
@@ -422,6 +424,13 @@ function sine(hzAt: (t: number) => number, seconds: number, amp = 0.4): Float32A
     if (v.presenceDb > 12) faults.push(`${v.id}: +${v.presenceDb}dB presence honks`);
     // Dull: no bite AND no top is just a blanket over the voice.
     if (v.presenceDb < 0 && v.lowpassHz < 5000) faults.push(`${v.id}: ${v.presenceDb}dB presence under a ${v.lowpassHz}Hz ceiling is muffled`);
+    // An album voice is neither autotune (that is what the auto bucket is
+    // for) nor a slide: on speech, much past 60 ms drifts drunkenly between
+    // notes, and 85-140 ms was exactly what "the album voices sound off" was.
+    if (!v.autotuned && (v.retuneGlideMs < 5 || v.retuneGlideMs > 60)) {
+      faults.push(`${v.id}: ${v.retuneGlideMs} ms glide is ${v.retuneGlideMs < 5 ? "autotune" : "a slide"}`);
+    }
+    if (v.roomSize < 0 || v.roomSize > 1 || v.roomToneHz < 500 || v.roomToneHz > 12000) faults.push(`${v.id}: room shape out of range`);
   }
   check("p  every voice stays musically plausible", faults.length === 0, faults.length ? faults.slice(0, 3).join("; ") : `${VOICES.length} voices within bounds`);
 }
@@ -541,6 +550,87 @@ function sine(hzAt: (t: number) => number, seconds: number, amp = 0.4): Float32A
     detail = `processor ran, output peak ${peak.toFixed(3)}`;
   }
   check("f  worklet source evaluates in a bare scope", ok, detail);
+}
+
+// ------------------- (s) vibrato with an onset blooms only on a held note
+// A constant LFO on a spoken voice is tape wobble, not vibrato: it decorates
+// every syllable. With an onset the depth must be ~0 at the start of a note,
+// full once the note has been held past the onset, and exactly 0 in silence.
+{
+  const k = new HardtuneKernel(SR);
+  k.setGate(0);
+  k.dryWet = 1;
+  k.setWarble(6, 20, 300);
+  const depth: number[] = [];
+  const tone = sine(() => 220, 1);
+  const inBlock = new Float32Array(BLOCK);
+  const outBlock = new Float32Array(BLOCK);
+  for (let off = 0; off + BLOCK <= tone.length; off += BLOCK) {
+    inBlock.set(tone.subarray(off, off + BLOCK));
+    k.process(inBlock, outBlock);
+    depth.push(k.warbleGain);
+  }
+  const at = (sec: number) => depth[Math.min(depth.length - 1, Math.floor((sec * SR) / BLOCK))];
+  const early = at(0.08); // detection needs ~45 ms to know the note exists
+  const full = at(0.7);
+  run(k, new Float32Array(SR)); // a second of silence: hold expires, depth must drop
+  const silent = k.warbleGain;
+  check(
+    "s  vibrato onset blooms on a held note only",
+    early < 0.35 && full > 0.99 && silent === 0,
+    `depth ${early.toFixed(2)} at 80 ms, ${full.toFixed(2)} at 700 ms, ${silent.toFixed(2)} after silence`,
+  );
+}
+
+// ------------- (t) the shelf matches the sleeves: every album has its voice
+// "Match the voices to the band albums", mechanically. Every sleeve in
+// public/album-art that is not an artist portrait must be the cover of
+// exactly one voice, and every voice's cover must exist on disk. A sleeve
+// nobody uses and a voice pointing at a missing file both fail.
+{
+  const dir = path.join(process.cwd(), "public", "album-art");
+  const onDisk = fs
+    .readdirSync(dir)
+    .filter((f) => /\.(jpe?g|png|webp)$/i.test(f))
+    .map((f) => `/album-art/${f}`);
+  const portraits = new Set(Object.values(ARTIST_PORTRAIT));
+  const problems: string[] = [];
+  for (const file of onDisk) {
+    if (portraits.has(file)) continue;
+    const users = VOICES.filter((v) => v.cover === file);
+    if (users.length !== 1) problems.push(`${file} is the cover of ${users.length} voices`);
+  }
+  for (const v of VOICES) {
+    if (v.cover && !onDisk.includes(v.cover)) problems.push(`${v.id}: ${v.cover} is not on disk`);
+  }
+  check(
+    "t  every sleeve on disk is one voice, every cover exists",
+    problems.length === 0,
+    problems.length ? problems.slice(0, 3).join("; ") : `${onDisk.length - portraits.size} sleeves, ${portraits.size} portraits`,
+  );
+}
+
+// ---------------- (u) the match walk never parks the glide in slide land
+// A linear walk from 250 ms spent most of the slider between 100 and 170 ms.
+// On a spoken voice that is a drunken slide between notes, and it is what
+// the album voices used to sound like at the old 70% default. The geometric
+// walk has to keep every album voice under 65 ms from 70% up, and land
+// exactly on the voice's own value at 100%.
+{
+  const bad: string[] = [];
+  for (const v of VOICES) {
+    if (v.autotuned) continue;
+    for (const match of [0.7, 0.85, 1]) {
+      const g = resolveParams(v, { match, robot: 0, volume: 1, gateDb: -50, denoise: 0.7, noiseReduction: 0 }).retuneGlideMs;
+      if (g > 65) bad.push(`${v.id}@${match}: ${g.toFixed(0)} ms`);
+      if (match === 1 && Math.abs(g - v.retuneGlideMs) > 0.01) bad.push(`${v.id}@1: ${g.toFixed(1)} != ${v.retuneGlideMs}`);
+    }
+  }
+  check(
+    "u  match walk keeps album voices out of slide territory",
+    bad.length === 0,
+    bad.length ? bad.slice(0, 3).join("; ") : "every album voice <= 65 ms from 70% match up, exact at 100%",
+  );
 }
 
 console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) FAILED`);

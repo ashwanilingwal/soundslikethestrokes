@@ -92,6 +92,17 @@ export class HardtuneKernel {
   warbleHz: number;
   warbleCents: number;
   warblePhase: number;
+  /**
+   * Samples over which the warble grows in after a note starts. 0 means the
+   * LFO is simply always on - tape wow, which does not care whether you are
+   * singing. Above 0 it behaves like a singer's vibrato: nothing through
+   * speech and note onsets, blooming only once a note is HELD.
+   */
+  warbleOnsetSamples: number;
+  /** Samples the current note has been held; reset on a note change or silence. */
+  sinceNote: number;
+  /** The warble depth actually applied this sample, 0..1. Read by the eval. */
+  warbleGain: number;
 
   // -- bitcrusher --
   shCount: number;
@@ -171,6 +182,9 @@ export class HardtuneKernel {
     this.warbleHz = 0;
     this.warbleCents = 0;
     this.warblePhase = 0;
+    this.warbleOnsetSamples = 0;
+    this.sinceNote = 0;
+    this.warbleGain = 0;
 
     this.shCount = 0;
     this.shHeld = 0;
@@ -273,9 +287,10 @@ export class HardtuneKernel {
     }
   }
 
-  setWarble(hz: number, cents: number): void {
+  setWarble(hz: number, cents: number, onsetMs = 0): void {
     this.warbleHz = Math.min(12, Math.max(0, hz));
     this.warbleCents = Math.min(100, Math.max(0, cents));
+    this.warbleOnsetSamples = Math.round(Math.min(2000, Math.max(0, onsetMs)) * 0.001 * this.sr);
   }
 
   /**
@@ -600,6 +615,7 @@ export class HardtuneKernel {
           this.sinceVoiced = 0;
           const midi = 69 + 12 * (Math.log(this.lastHz / 440) / Math.LN2);
           const target = this.snapMidi(midi) + this.semitoneShift;
+          if (target !== this.lastTargetMidi) this.sinceNote = 0;
           this.lastMidi = midi;
           this.lastTargetMidi = target;
           let r = Math.pow(2, (target - midi) / 12);
@@ -628,9 +644,28 @@ export class HardtuneKernel {
       // -- warble: LFO on the playback ratio --
       let rEff = this.ratio;
       if (this.warbleCents > 0 && this.warbleHz > 0) {
+        // Depth. Tape wobble (onset 0) is always there; vibrato is not - a
+        // singer holds a note steady first and lets it bloom, and never
+        // vibratos consonants. Smoothstep from 0 to full over the onset,
+        // counted only while voiced, so speech stays dead steady and only a
+        // HELD note starts to sing.
+        let depth = 1;
+        if (this.warbleOnsetSamples > 0) {
+          if (this.voiced) {
+            this.sinceNote++;
+            const x = this.sinceNote >= this.warbleOnsetSamples ? 1 : this.sinceNote / this.warbleOnsetSamples;
+            depth = x * x * (3 - 2 * x);
+          } else {
+            this.sinceNote = 0;
+            depth = 0;
+          }
+        }
+        this.warbleGain = depth;
         this.warblePhase += this.warbleHz / this.sr;
         if (this.warblePhase >= 1) this.warblePhase -= 1;
-        rEff *= Math.pow(2, (this.warbleCents * Math.sin(6.283185307179586 * this.warblePhase)) / 1200);
+        if (depth > 0) {
+          rEff *= Math.pow(2, (depth * this.warbleCents * Math.sin(6.283185307179586 * this.warblePhase)) / 1200);
+        }
       }
 
       // -- dual-tap grain player --

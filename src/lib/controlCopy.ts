@@ -97,6 +97,13 @@ export const CONTROL_COPY: Record<string, ControlCopy> = {
     whatItDoes: "Sets how far each wobble travels away from the note. A few cents is subtle, expressive vibrato; a hundred or more bends far enough to sound seasick and broken.",
     inTheWild: "Because singers use narrow vibrato as expression, small amounts read as simply human, while the wide setting gives the damaged-cassette drift that vaporwave and lo-fi built an aesthetic on.",
   },
+  "warbleOnsetMs": {
+    id: "warbleOnsetMs",
+    label: "vibrato onset / bloom",
+    oneLiner: "0 = always wobbling; higher = vibrato only on held notes.",
+    whatItDoes: "At 0 the wobble is simply always there, like a tape machine that does not care whether you are singing. Set a time and the swing is silent through speech and note attacks, growing in only once a note has been held that long — talking stays steady and only a sustained note starts to sing.",
+    inTheWild: "This is how real vibrato behaves: a singer lands the note straight and lets the vibrato bloom a beat later, and never vibratos a consonant. The crooner records live here; a constant wobble is the tape-and-turntable sound instead.",
+  },
   "highpassHz": {
     id: "highpassHz",
     label: "low cut / high-pass",
@@ -124,6 +131,20 @@ export const CONTROL_COPY: Record<string, ControlCopy> = {
     oneLiner: "How much space the voice sits in.",
     whatItDoes: "Sends the voice into a modelled space and mixes the reflections back in. A little places the voice in a room; a lot pushes it further away and softens its edges.",
     inTheWild: "Reverb is really a depth control — a dry vocal sits right in front of the listener, and adding room is how a mix sets backing vocals and atmosphere behind the lead.",
+  },
+  "roomSize": {
+    id: "roomSize",
+    label: "room size / space",
+    oneLiner: "Tight booth on the left, long plate on the right.",
+    whatItDoes: "Crossfades between two spaces: a small booth whose reflections are gone within half a second, and a long plate that rings on for a couple of seconds. The middle is both at once, which is roughly how a real room behaves — close reflections plus a tail.",
+    inTheWild: "Garage records are cut at the booth end, where the room is barely there and the vocal is in your face. Lounge and stadium records live at the plate end, with the singer in front of a wash that outlasts every line.",
+  },
+  "roomToneHz": {
+    id: "roomToneHz",
+    label: "room tone / brightness",
+    oneLiner: "How bright the reflections are — dark and woolly to airy.",
+    whatItDoes: "A filter on the reverb return only, never on your voice. Low settings make the space dark and woolly, which hides distortion and pushes the room behind you; high settings let the top end ring, which reads as a bright plate or a hard-walled hall.",
+    inTheWild: "Engineers almost always roll the top off a vocal reverb so it sits behind the singer, and open it back up only when the room itself is meant to be heard — the bright plate on a 2010s pop hook against the dark spring on a lo-fi demo.",
   },
   "echoMs": {
     id: "echoMs",

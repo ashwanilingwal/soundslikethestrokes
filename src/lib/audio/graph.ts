@@ -142,10 +142,11 @@ class HardtuneProcessor extends AudioWorkletProcessor {
       if (m.clearNoiseProfile) this.kernel.clearNoiseProfile();
       if (m.denoise !== undefined) this.kernel.setDenoise(m.denoise);
       if (m.semitoneShift !== undefined) this.kernel.setSemitoneShift(m.semitoneShift);
-      if (m.warbleHz !== undefined || m.warbleCents !== undefined) {
+      if (m.warbleHz !== undefined || m.warbleCents !== undefined || m.warbleOnsetMs !== undefined) {
         this.kernel.setWarble(
           m.warbleHz !== undefined ? m.warbleHz : this.kernel.warbleHz,
           m.warbleCents !== undefined ? m.warbleCents : this.kernel.warbleCents,
+          m.warbleOnsetMs !== undefined ? m.warbleOnsetMs : (this.kernel.warbleOnsetSamples * 1000) / this.kernel.sr,
         );
       }
     };
@@ -175,19 +176,19 @@ registerProcessor("hardtune", HardtuneProcessor);
 `;
 
 /**
- * A dark little room, synthesised rather than shipped: decaying noise, one-pole
- * lowpassed so the tail is warm instead of fizzy, with a short silent
- * pre-delay so the voice keeps its edge before the space arrives. Two
- * decorrelated channels, which is what widens a mono worklet into something
- * that sounds like a room rather than a dot in the middle of your head.
+ * A space, synthesised rather than shipped: decaying noise, one-pole lowpassed
+ * by `tone` (0..1, higher = brighter start), with a silent pre-delay so the
+ * voice keeps its edge before the reflections arrive. Two decorrelated
+ * channels, which is what widens a mono worklet into something that sounds
+ * like a room rather than a dot in the middle of your head.
  *
  * Deterministic LCG, not Math.random: the same build should always sound the
  * same, and a bad-sounding tail should be reproducible.
  */
-function makeRoomIR(ctx: AudioContext, seconds = 1.9, decay = 2.8): AudioBuffer {
+function makeRoomIR(ctx: AudioContext, seconds: number, decay: number, preDelayMs: number, tone: number): AudioBuffer {
   const sr = ctx.sampleRate;
   const len = Math.floor(sr * seconds);
-  const preDelay = Math.floor(sr * 0.02);
+  const preDelay = Math.floor((sr * preDelayMs) / 1000);
   const ir = ctx.createBuffer(2, len, sr);
   for (let ch = 0; ch < 2; ch++) {
     const data = ir.getChannelData(ch);
@@ -195,7 +196,7 @@ function makeRoomIR(ctx: AudioContext, seconds = 1.9, decay = 2.8): AudioBuffer 
     const rand = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff) * 2 - 1;
     let lp = 0;
     for (let i = preDelay; i < len; i++) {
-      lp += (rand() - lp) * 0.22; // one-pole: darkens the tail
+      lp += (rand() - lp) * tone; // one-pole: how bright the tail starts
       const t = (i - preDelay) / (len - preDelay);
       data[i] = lp * Math.pow(1 - t, decay);
     }
@@ -321,9 +322,28 @@ export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): Ef
   const echoWet = ctx.createGain();
   echoWet.gain.value = 0;
 
-  // Reverb as a parallel send: dry stays intact, the room is added beside it.
-  const roomSend = ctx.createConvolver();
-  roomSend.buffer = makeRoomIR(ctx);
+  /**
+   * Reverb as a parallel send: dry stays intact, the room is added beside it.
+   *
+   * Two fixed spaces crossfaded by `roomSize` - a tight booth whose
+   * reflections are gone inside half a second, and a long plate - rather
+   * than one room. One dark 1.9 s tail could only be turned up or down, so
+   * every wet voice was the same bathroom at different levels, and a 2001
+   * garage vocal, a 2018 lounge crooner and a 2019 stadium hook do not live
+   * in the same room. Two gains ramp cleanly; swapping a convolver's buffer
+   * mid-stream drops its tail, which is why size is not one IR rebuilt on
+   * the fly. Both tails are synthesised BRIGHT and `roomToneHz` darkens the
+   * sum afterwards, so tone is a biquad ramp as well.
+   */
+  const booth = ctx.createConvolver();
+  booth.buffer = makeRoomIR(ctx, 0.42, 3.4, 6, 0.62);
+  const plate = ctx.createConvolver();
+  plate.buffer = makeRoomIR(ctx, 2.0, 2.6, 24, 0.62);
+  const boothGain = ctx.createGain();
+  const plateGain = ctx.createGain();
+  const roomDamp = ctx.createBiquadFilter();
+  roomDamp.type = "lowpass";
+  roomDamp.Q.value = 0.5;
   const roomWet = ctx.createGain();
 
   const master = ctx.createGain();
@@ -350,7 +370,9 @@ export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): Ef
   const recorderDest = ctx.createMediaStreamDestination();
 
   hardtune.connect(shaper).connect(highpass).connect(presence).connect(lowpass).connect(master).connect(limiter);
-  lowpass.connect(roomSend).connect(roomWet).connect(master);
+  lowpass.connect(booth).connect(boothGain).connect(roomDamp);
+  lowpass.connect(plate).connect(plateGain).connect(roomDamp);
+  roomDamp.connect(roomWet).connect(master);
   lowpass.connect(echo);
   echo.connect(echoDamp).connect(echoFeedback).connect(echo);
   echo.connect(echoWet).connect(master);
@@ -384,6 +406,13 @@ export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): Ef
     if (p.lowpassHz !== undefined) ramp(lowpass.frequency, p.lowpassHz);
     if (p.presenceDb !== undefined) ramp(presence.gain, p.presenceDb);
     if (p.roomMix !== undefined) ramp(roomWet.gain, p.roomMix);
+    if (p.roomSize !== undefined) {
+      // Equal-power crossfade, so the middle is not quieter than either end.
+      const s = Math.min(1, Math.max(0, p.roomSize)) * Math.PI * 0.5;
+      ramp(boothGain.gain, Math.cos(s));
+      ramp(plateGain.gain, Math.sin(s));
+    }
+    if (p.roomToneHz !== undefined) ramp(roomDamp.frequency, p.roomToneHz);
     if (p.echoMs !== undefined) {
       // Stepped, not ramped: gliding a delay line resamples what is already
       // inside it and audibly bends the pitch of the repeats.
@@ -405,8 +434,8 @@ export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): Ef
       // The slider's floor doubles as "off".
       hardtune.port.postMessage({ gateThreshold: p.gateDb <= -74 ? 0 : Math.pow(10, p.gateDb / 20) });
     }
-    if (p.warbleHz !== undefined || p.warbleCents !== undefined) {
-      hardtune.port.postMessage({ warbleHz: p.warbleHz, warbleCents: p.warbleCents });
+    if (p.warbleHz !== undefined || p.warbleCents !== undefined || p.warbleOnsetMs !== undefined) {
+      hardtune.port.postMessage({ warbleHz: p.warbleHz, warbleCents: p.warbleCents, warbleOnsetMs: p.warbleOnsetMs });
     }
     if (p.denoise !== undefined) hardtune.port.postMessage({ denoise: p.denoise });
     if (p.noiseReduction !== undefined) hardtune.port.postMessage({ noiseReduction: p.noiseReduction });
@@ -419,6 +448,9 @@ export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): Ef
   lowpass.frequency.value = initial.lowpassHz;
   presence.gain.value = initial.presenceDb;
   roomWet.gain.value = initial.roomMix;
+  boothGain.gain.value = Math.cos(initial.roomSize * Math.PI * 0.5);
+  plateGain.gain.value = Math.sin(initial.roomSize * Math.PI * 0.5);
+  roomDamp.frequency.value = initial.roomToneHz;
   echo.delayTime.value = Math.min(1, Math.max(0, initial.echoMs / 1000));
   echoFeedback.gain.value = Math.min(0.75, initial.echoFeedback);
   echoWet.gain.value = initial.echoMs > 0 ? initial.echoMix : 0;
@@ -452,7 +484,11 @@ export function buildEffectChain(ctx: AudioContext, initial: AdvancedParams): Ef
         highpass.disconnect();
         presence.disconnect();
         lowpass.disconnect();
-        roomSend.disconnect();
+        booth.disconnect();
+        plate.disconnect();
+        boothGain.disconnect();
+        plateGain.disconnect();
+        roomDamp.disconnect();
         roomWet.disconnect();
         echo.disconnect();
         echoDamp.disconnect();

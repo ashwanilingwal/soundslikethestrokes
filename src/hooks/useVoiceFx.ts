@@ -47,7 +47,11 @@ export type VoiceStatus = "off" | "opening" | "live" | "error";
 /** Microphone, or an audio file decoded and fed through the same chain. */
 export type SourceKind = "mic" | "file";
 
-const DEFAULT_MACROS = { match: 0.7, robot: 0, volume: 1.1 };
+/**
+ * match starts at 100%: the default voice is an auto voice, and at 70% it
+ * resolved to 75 ms of glide - a sung slide - until the user re-picked it.
+ */
+const DEFAULT_MACROS = { match: 1, robot: 0, volume: 1.1 };
 /** Not voice-derived, so these survive voice changes. */
 const DEFAULT_CLEANUP = { gateDb: -50, denoise: 0.7, noiseReduction: 0 };
 
@@ -165,12 +169,15 @@ export function useVoiceFx() {
   const selectVoice = useCallback((next: Voice) => {
     setVoice(next);
     setOverrides({});
-    // A voice labelled "auto" has to actually sound auto the moment it is
-    // picked. At the default 70% match it would resolve to ~75 ms of glide,
-    // which is a sung slide, not a snap - the one thing these voices exist
-    // for. Jump match to full; the slider visibly moves, so pulling it back
-    // is still obvious and available.
-    if (next.autotuned) setMacros((prev) => ({ ...prev, match: 1 }));
+    // Every voice comes in at 100%: picking a record should GIVE you that
+    // record, and the match slider is then how you dial back towards your
+    // own voice. The old rule jumped only the auto voices to full and left
+    // the album voices at 70% - which resolved to 100-170 ms of retune
+    // glide, a drunken slide between notes on speech, with 30% of the
+    // untuned voice bleeding underneath. That was most of why the album
+    // voices sounded off. The slider visibly moves, so pulling it back is
+    // still obvious and available.
+    setMacros((prev) => ({ ...prev, match: 1 }));
   }, []);
 
   const setMacro = useCallback((patch: Partial<typeof DEFAULT_MACROS>) => {

@@ -69,7 +69,8 @@ getUserMedia (noiseSuppression/autoGainControl OFF, mono;
   → WaveShaper                    [tanh(drive·x)/tanh(drive), 4x oversample]
   → Biquad highpass → peaking 1.8 kHz "presence" → lowpass   [megaphone band + mid bite]
   → master gain                   [> 1 allowed: this is the output boost]
-       ↑ parallel send: lowpass → Convolver (synthesised dark room IR) → roomWet →
+       ↑ parallel send: lowpass → booth ⨯ plate convolvers (crossfaded by roomSize)
+                          → roomDamp lowpass (roomToneHz) → roomWet →
   → DynamicsCompressor limiter    [-3 dB, knee 3, ratio 20, 1 ms / 80 ms — StrumLab's settings,
                                    deliberately LAST so the boost can't slam the DAC]
   → destination
@@ -113,7 +114,10 @@ fallback is to ship the compiled kernel as `public/hardtune-worklet.js` and
 - Unvoiced: hold last ratio 200 ms (consonants at note-ends stay pitched), then
   relax to unity over 50 ms. Never bypass — a delay jump clicks.
 - Transpose (`semitoneShift`) is applied to the *snapped* note, so it stays on
-  the grid. Alex III uses −2 for the lower register.
+  the grid. Lounge '18 uses −2 for the crooner register, Hi-fi '20 +3.
+- Warble has an optional ONSET: depth smoothsteps from 0 over `warbleOnsetMs`
+  of a HELD note and is 0 through silence, so a singer's vibrato (5–6 Hz,
+  onset 240–260 ms) never decorates speech. Onset 0 is constant tape wow.
 - Warble = pitch LFO multiplied into the playback ratio (0–10 Hz, 0–100 cents):
   vibrato at small depths, melted-tape robot at large ones.
 - No allocation inside `process()`.
@@ -154,30 +158,46 @@ amplitude, where only the tone gets through.
 
 ## Voices and the macro model
 
-Six era-inspired characters — not voice clones, and the UI says so. Each
-card states what differs from its siblings, because "Julian I / II / III"
-communicates nothing on its own.
+One voice per record with a sleeve in `public/album-art`, plus one hard-tuned
+voice per singer. Not voice clones, and the UI says so. Each card states what
+differs from its siblings, because "Julian I / II / III" communicates nothing
+on its own. Eval check `t` enforces the shelf: every sleeve on disk is the
+cover of exactly one voice, and every cover exists.
 
-| Voice | Era | What differs |
+The values are what the records do to a vocal, not a spread chosen to differ:
+
+| Voice | Era | What it is |
 |---|---|---|
-| Julian I | Is This It · 2001 | Narrow 450–3200 Hz telephone band, hard clipping, driest |
-| Julian II | I'll Try Anything Once · 2006 demo | Warm 180–2600 Hz, keeps the chest, roomy, sung glide |
-| Julian III | The Voidz · 2014→ | 8-bit crush, 5 Hz/55¢ seasick warble, hard snap |
-| Julian IV | The New Abnormal · 2020 | **+5 semitones** into falsetto, brightest and wettest, least dirt |
-| Julian · Auto | hard-tuned | Julian II's haze, glide 0, wet locked |
-| Alex I | Whatever People Say I Am · 2006 | Bright, dry, barely coloured; wide 150–7000 Hz |
-| Alex II | AM · 2013 | Smoother, softer top, real room |
-| Alex III | Tranquility Base · 2018 | **−2 semitones**, dark 90–4000 Hz, wettest, least bite |
-| Alex IV | The Car · 2022 | −1 semitone, silky, the only true singer's vibrato (4.5 Hz/18¢) |
-| Alex · Auto | hard-tuned | AM smoothness, glide 0, no wobble |
-| Posty I | Stoney · 2016 | Warm/hazy under a hard tune, rounded top |
-| Posty II | Hollywood's Bleeding · 2019 | Cleanest path, brightest, biggest reverb |
-| Posty III | Twelve Carat Toothache · 2022 | Rougher: real saturation + crush behind the tune |
+| Julian I | Is This It · 2001 | Practice-amp vocal: drive 8, 280–4200 Hz, +7 presence, dry. **No crush** — it is an analog record |
+| Julian II | Room on Fire · 2003 | Same amp, wider (230–5600), a touch of room |
+| Julian III | I'll Try Anything Once · 2006 demo | Soft cassette: drive 5, 150–3800, 1.1 Hz/7¢ wow, dark small room |
+| Julian IV | Comedown Machine · 2013 | The processed one: 11-bit ×2 crush, 6 ms snap, 5.5 Hz flutter, echo |
+| Julian V | The New Abnormal · 2020 | Hi-fi: **+3 semitones** (not 5 — past ~4 a grain shifter reads as a smaller person), bright plate, vibrato on held notes |
+| Julian · Auto | hard-tuned | The demo's haze, glide 0, wet locked. Untouched |
+| Alex I | Whatever People Say I Am · 2006 | Bright, dry, 160–9500, barely any room |
+| Alex II | AM · 2013 | Smooth, the record's 120 ms slapback, warm top |
+| Alex III | Tranquility Base · 2018 | **−2 semitones**, 90–7000 (was 4000: dark AND wettest = mud), full plate at 5 kHz, tape echo |
+| Alex IV | The Car · 2022 | −1, drier, real vibrato: 5.6 Hz/12¢ with a 240 ms onset |
+| Alex · Auto | hard-tuned | AM smoothness, glide 0. Untouched |
+| Posty I | August 26th · 2016 | Mixtape: warm and hazy under a hard tune. Replaces Stoney — same year, same sound, and this one has a sleeve |
+| Posty II | beerbongs & bentleys · 2018 | Dark and tight, medium plate |
+| Posty III | Hollywood's Bleeding · 2019 | Stadium: cleanest, brightest, full bright plate |
+| Posty IV | Twelve Carat Toothache · 2022 | Rougher and drier; no crush, the record is polished |
+| Posty · Auto | hard-tuned | Untouched |
 
-Voices carrying `autotuned: true` **jump `match` to 100% when selected**. At
-the default 70% they would resolve to ~75 ms of glide — a sung slide, which is
-the one thing these voices exist to not be. The slider visibly moves, so
-pulling it back stays obvious. Eval check `l` guards the invariant.
+Album voices carry 6–45 ms of glide (check `p` bounds it to 5–60): under 5 is
+autotune, which is what the auto bucket is for, and much over 60 drifts
+drunkenly between notes on speech. Room SHAPE (`roomSize`, `roomToneHz`) and
+vibrato onset are traits, not quantities — `resolveParams` does not walk them
+with `match`, same as echo time.
+
+**Every voice comes in at `match` 100% when picked**, and `match` starts at
+100%. Picking a record gives you that record; the slider is how you dial back
+towards yourself. The old rule (only auto voices jump to 100%, album voices
+sit at 70%) resolved the album voices to 100–170 ms of glide with 30% untuned
+voice underneath — which is what "the album voices sound off" was. The walk
+from NEUTRAL is perceptual, not linear: wet is full by 60%, and glide moves
+geometrically so the slide band is crossed quickly. Checks `l` and `u`.
 
 ### The two-step picker
 
@@ -368,4 +388,4 @@ then open `/soundcheck` on 3601 and press run — all of A–G must PASS.
 
 - TD-PSOLA shifter for cleaner tuning at the same latency.
 - WAV export next to the webm/m4a clip.
-- Formant preservation toggle; octave-down "Voidz" preset.
+- Formant preservation toggle; an octave-down Voidz-style preset.

@@ -322,6 +322,7 @@ export function AdvancedPanel({
           <Slider id="downsampleFactor" value={params.downsampleFactor} min={1} max={16} step={1} unit="×" onChange={(v) => onOverride({ downsampleFactor: v })} />
           <Slider id="warbleHz" value={params.warbleHz} min={0} max={12} step={0.1} unit=" Hz" onChange={(v) => onOverride({ warbleHz: v })} />
           <Slider id="warbleCents" value={params.warbleCents} min={0} max={100} step={1} unit="¢" onChange={(v) => onOverride({ warbleCents: v })} />
+          <Slider id="warbleOnsetMs" value={params.warbleOnsetMs} min={0} max={1000} step={20} format={(v) => (v === 0 ? "always" : `${Math.round(v)} ms`)} onChange={(v) => onOverride({ warbleOnsetMs: v })} />
         </Section>
 
         <Section group="tone">
@@ -332,6 +333,8 @@ export function AdvancedPanel({
 
         <Section group="space">
           <Slider id="roomMix" value={params.roomMix} min={0} max={1} step={0.02} onChange={(v) => onOverride({ roomMix: v })} />
+          <Slider id="roomSize" value={params.roomSize} min={0} max={1} step={0.05} format={(v) => (v <= 0.02 ? "booth" : v >= 0.98 ? "plate" : String(Math.round(v * 100) / 100))} onChange={(v) => onOverride({ roomSize: v })} />
+          <Slider id="roomToneHz" value={params.roomToneHz} min={500} max={12000} step={100} unit=" Hz" format={(v) => String(Math.round(v))} onChange={(v) => onOverride({ roomToneHz: v })} />
           <Slider id="echoMs" value={params.echoMs} min={0} max={500} step={5} unit=" ms" format={(v) => (v === 0 ? "off" : String(Math.round(v)))} onChange={(v) => onOverride({ echoMs: v })} />
           <Slider id="echoFeedback" value={params.echoFeedback} min={0} max={0.75} step={0.01} onChange={(v) => onOverride({ echoFeedback: v })} />
           <Slider id="echoMix" value={params.echoMix} min={0} max={0.6} step={0.02} onChange={(v) => onOverride({ echoMix: v })} />
