@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SiteCopy } from "@/components/SiteCopy";
+import { StructuredData } from "@/components/StructuredData";
 import { VoiceStage } from "@/components/VoiceStage";
 
 /**
@@ -13,8 +13,9 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <VoiceStage>
-      <SiteCopy />
-    </VoiceStage>
+    <>
+      <VoiceStage />
+      <StructuredData />
+    </>
   );
 }

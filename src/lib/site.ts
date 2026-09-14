@@ -58,8 +58,8 @@ export const SITE_DESCRIPTION =
 
 /**
  * Search engines stopped using the keywords meta tag two decades ago, so this
- * is NOT that. It is the vocabulary the prose below the deck is written to
- * cover, kept here so the page and the structured data cannot drift apart.
+ * is NOT that - it is emitted nowhere. It is the vocabulary the guide page and
+ * the descriptions are written to cover, kept in one place on purpose.
  */
 export const SITE_TOPICS = [
   "autotune voice changer",
@@ -71,7 +71,7 @@ export const SITE_TOPICS = [
   "free autotune microphone",
 ];
 
-/** Bullet list under the intro, and `featureList` in the structured data. */
+/** `featureList` in the structured data. */
 export const SITE_FEATURES = [
   "Hard autotune with no glide — every word snaps to the nearest semitone, the T-Pain / Post Malone effect",
   "Voice characters drawn from specific eras, from garage-rock grit to the widescreen, delay-soaked later records",
@@ -80,54 +80,4 @@ export const SITE_FEATURES = [
   "Room noise cancellation that learns your actual room from a few seconds of silence",
   "Record what you hear and download it, with or without going live first",
   "Run an audio file through the chain instead of a microphone",
-];
-
-export interface Faq {
-  q: string;
-  a: string;
-}
-
-/**
- * One source of truth for the FAQ: the visible <h3>/<p> pairs and the
- * FAQPage JSON-LD are both rendered from this array. Structured data that
- * disagrees with the page is a manual action waiting to happen, and the only
- * reliable way to keep them in step is to not write them twice.
- */
-export const SITE_FAQ: Faq[] = [
-  {
-    q: "Is it free?",
-    a: "Yes. There is no account, no trial and no export limit. The page carries a single ad below the controls, which is the whole business model.",
-  },
-  {
-    q: "Do I need to install anything?",
-    a: "No. It is a web page. The audio processing runs in an AudioWorklet inside your browser tab, so there is no plugin, no app and no driver to set up.",
-  },
-  {
-    q: "Does my voice get uploaded anywhere?",
-    a: "Never. Every sample stays in the tab — the microphone feeds the browser's own audio engine directly, and nothing is sent to a server or written to disk unless you press record and save the file yourself. Close the tab and it is gone.",
-  },
-  {
-    q: "Why does it ask whether I am on headphones or speakers?",
-    a: "Because the answer changes how the microphone is opened. On headphones, echo cancellation is switched off so your voice reaches the tuner untouched, which sounds better. On speakers it has to stay on, otherwise the processed output feeds back into the mic and howls.",
-  },
-  {
-    q: "How much delay is there between speaking and hearing it?",
-    a: "Roughly 40 milliseconds on wired headphones, which is close enough to feel live. Bluetooth headphones add 100–300 ms of their own on top, and that is enough to be distracting — use wired ones if you have them.",
-  },
-  {
-    q: "Does it work on a phone?",
-    a: "Yes, in a recent Chrome or Safari, and the layout is built to fit a phone screen without scrolling. Wired earphones matter more on a phone than anywhere else, because the built-in speaker and mic are close enough together to feed back.",
-  },
-  {
-    q: "Can I record what I hear?",
-    a: "Yes. The record button captures the processed output and hands you a file to download. You do not have to go live first — pressing record starts the engine and captures from the first sample.",
-  },
-  {
-    q: "Which microphone should I use?",
-    a: "Almost anything beats a laptop's built-in mic, which sits next to the fans and picks up the whole room. Wired earphones with an inline mic are a real step up for nothing; a USB condenser is the next one. What matters most is being close to it — halving the distance to the mic buys more than any setting on this page.",
-  },
-  {
-    q: "Is this the actual voice of a real singer?",
-    a: "No, and it is not trying to be. There is no voice cloning here and no model trained on anyone. These are ordinary studio effects — pitch quantisation, saturation, filtering, reverb — set to the values that produce a familiar era's texture. It will sound like the record's treatment, in your own voice.",
-  },
 ];
