@@ -8,19 +8,17 @@
  * shown on the card, because "Julian I / II / III" tells you nothing on its
  * own.
  *
- * The label art is likewise ORIGINAL, not the real sleeves: generated
- * geometry in an era-appropriate palette, the way a bootleg pressing would
- * look. Real cover art is copyrighted and is not reproduced here.
+ * `art` is the record's palette: the disc face under the sleeve while it
+ * loads, and the PLAY/STOP label's colours. (A generated-geometry fallback
+ * sleeve used to hang off it too; every voice now has a real sleeve or the
+ * singer's portrait, so that code is gone.)
  */
-
-export type Motif = "bar" | "haze" | "glitch" | "dots" | "arc" | "burst" | "orbit";
 
 export interface LabelArt {
   /** Label background. */
   paper: string;
-  /** Motif + text colour. Must read clearly on `paper`. */
+  /** Text colour. Must read clearly on `paper`. */
   ink: string;
-  motif: Motif;
 }
 
 export interface VoiceParams {
@@ -157,7 +155,7 @@ export const VOICES: Voice[] = [
     echoFeedback: 0,
     echoMix: 0,
     semitoneShift: 0,
-    art: { paper: "#e8e2d6", ink: "#c8102e", motif: "bar" },
+    art: { paper: "#e8e2d6", ink: "#c8102e" },
     cover: "/album-art/isthisit.jpg",
   },
   {
@@ -187,7 +185,7 @@ export const VOICES: Voice[] = [
     echoFeedback: 0,
     echoMix: 0,
     semitoneShift: 0,
-    art: { paper: "#1a1c2b", ink: "#ff5a4e", motif: "dots" },
+    art: { paper: "#1a1c2b", ink: "#ff5a4e" },
     cover: "/album-art/room-on-fire.jpg",
   },
   {
@@ -217,7 +215,7 @@ export const VOICES: Voice[] = [
     echoFeedback: 0,
     echoMix: 0,
     semitoneShift: 0,
-    art: { paper: "#2a1a10", ink: "#e8a33d", motif: "haze" },
+    art: { paper: "#2a1a10", ink: "#e8a33d" },
     cover: "/album-art/try-anything.jpg",
   },
   {
@@ -247,7 +245,7 @@ export const VOICES: Voice[] = [
     echoFeedback: 0.34,
     echoMix: 0.22,
     semitoneShift: 0,
-    art: { paper: "#f4b942", ink: "#1b1b1b", motif: "glitch" },
+    art: { paper: "#f4b942", ink: "#1b1b1b" },
     cover: "/album-art/comedown-machine.jpg",
   },
   {
@@ -282,7 +280,7 @@ export const VOICES: Voice[] = [
     // the tone - which is most of what makes a shifted voice read as
     // falsetto - without tipping into that.
     semitoneShift: 3,
-    art: { paper: "#101a2e", ink: "#ff7ac6", motif: "orbit" },
+    art: { paper: "#101a2e", ink: "#ff7ac6" },
     cover: "/album-art/newabnormal.jpg",
   },
   {
@@ -315,7 +313,7 @@ export const VOICES: Voice[] = [
     echoFeedback: 0.28,
     echoMix: 0.2,
     semitoneShift: 0,
-    art: { paper: "#0a0f18", ink: "#5fd2f2", motif: "burst" },
+    art: { paper: "#0a0f18", ink: "#5fd2f2" },
     cover: "/album-art/julian.jpg",
     coverPosition: "center 25%",
   },
@@ -347,7 +345,7 @@ export const VOICES: Voice[] = [
     echoFeedback: 0,
     echoMix: 0,
     semitoneShift: 0,
-    art: { paper: "#111417", ink: "#dfe6ea", motif: "dots" },
+    art: { paper: "#111417", ink: "#dfe6ea" },
     cover: "/album-art/whateverpeople.jpg",
   },
   {
@@ -377,7 +375,7 @@ export const VOICES: Voice[] = [
     echoFeedback: 0.18,
     echoMix: 0.22,
     semitoneShift: 0,
-    art: { paper: "#0b0b0c", ink: "#f2ede4", motif: "arc" },
+    art: { paper: "#0b0b0c", ink: "#f2ede4" },
     cover: "/album-art/am.jpg",
   },
   {
@@ -407,7 +405,7 @@ export const VOICES: Voice[] = [
     echoFeedback: 0.36,
     echoMix: 0.28,
     semitoneShift: -2,
-    art: { paper: "#241a0e", ink: "#d8b169", motif: "orbit" },
+    art: { paper: "#241a0e", ink: "#d8b169" },
     cover: "/album-art/casinobase.jpg",
   },
   {
@@ -437,7 +435,7 @@ export const VOICES: Voice[] = [
     echoFeedback: 0.2,
     echoMix: 0.14,
     semitoneShift: -1,
-    art: { paper: "#1c1b18", ink: "#b9c2b0", motif: "haze" },
+    art: { paper: "#1c1b18", ink: "#b9c2b0" },
     cover: "/album-art/the-car.jpg",
   },
   {
@@ -468,7 +466,7 @@ export const VOICES: Voice[] = [
     echoFeedback: 0,
     echoMix: 0,
     semitoneShift: 0,
-    art: { paper: "#12091c", ink: "#c08cff", motif: "burst" },
+    art: { paper: "#12091c", ink: "#c08cff" },
     cover: "/album-art/alex-turner.jpg",
     coverPosition: "center 25%",
   },
@@ -505,7 +503,7 @@ export const VOICES: Voice[] = [
     echoFeedback: 0.32,
     echoMix: 0.26,
     semitoneShift: 0,
-    art: { paper: "#1a0d14", ink: "#ff8fb8", motif: "burst" },
+    art: { paper: "#1a0d14", ink: "#ff8fb8" },
     cover: "/album-art/post-malone.jpg",
     coverPosition: "center 25%",
   },
@@ -537,7 +535,7 @@ export const VOICES: Voice[] = [
     echoFeedback: 0.24,
     echoMix: 0.18,
     semitoneShift: 0,
-    art: { paper: "#241813", ink: "#e3b98c", motif: "haze" },
+    art: { paper: "#241813", ink: "#e3b98c" },
     cover: "/album-art/aug26.jpg",
   },
   {
@@ -568,7 +566,7 @@ export const VOICES: Voice[] = [
     echoFeedback: 0.3,
     echoMix: 0.22,
     semitoneShift: 0,
-    art: { paper: "#0c0d10", ink: "#d4b16a", motif: "arc" },
+    art: { paper: "#0c0d10", ink: "#d4b16a" },
     cover: "/album-art/bandb.jpg",
   },
   {
@@ -599,7 +597,7 @@ export const VOICES: Voice[] = [
     echoFeedback: 0.34,
     echoMix: 0.28,
     semitoneShift: 0,
-    art: { paper: "#140a10", ink: "#ff6f9c", motif: "burst" },
+    art: { paper: "#140a10", ink: "#ff6f9c" },
     cover: "/album-art/hollywoodbleeding.jpg",
   },
   {
@@ -630,7 +628,7 @@ export const VOICES: Voice[] = [
     echoFeedback: 0.22,
     echoMix: 0.16,
     semitoneShift: 0,
-    art: { paper: "#16171a", ink: "#e2452f", motif: "glitch" },
+    art: { paper: "#16171a", ink: "#e2452f" },
   },
 ];
 
@@ -665,14 +663,6 @@ export function artistName(artist: Voice["artist"]): string {
 }
 
 /**
- * Second-step option text. Under Autotune that is the singer's name; under a
- * band it is the era, since the singer is already implied by the bucket.
- */
-export function optionLabel(voice: Voice): string {
-  return voice.category === "auto" ? artistName(voice.artist) : voice.era;
-}
-
-/**
  * Button face: the album or the singer, without the year. Derived from `era`
  * rather than stored, so there is no second name to keep in sync.
  */
@@ -699,7 +689,7 @@ export function discLabel(voice: Voice): string {
  * era with no artwork supplied, or the autotune voices, which are people
  * rather than records.
  */
-export const ARTIST_PORTRAIT: Partial<Record<Voice["artist"], string>> = {
+export const ARTIST_PORTRAIT: Record<Voice["artist"], string> = {
   julian: "/album-art/julian.jpg",
   alex: "/album-art/alex-turner.jpg",
   posty: "/album-art/post-malone.jpg",
@@ -707,27 +697,19 @@ export const ARTIST_PORTRAIT: Partial<Record<Voice["artist"], string>> = {
 
 /**
  * What to show on a tile or a disc: the sleeve if there is one, otherwise the
- * artist. Returns null only if neither exists, which is the generated-art
- * fallback - it should not happen while every artist has a portrait, but the
- * data allows it and a missing file should degrade rather than blank out.
+ * singer's portrait - every artist has one, so there is always an image.
  *
  * Portraits are framed high: the photos are portrait orientation, and
  * centring one inside a circle guillotines the face.
  */
-export function coverFor(voice: Voice): { url: string; position: string } | null {
+export function coverFor(voice: Voice): { url: string; position: string } {
   if (voice.cover) return { url: voice.cover, position: voice.coverPosition ?? "center" };
-  const portrait = ARTIST_PORTRAIT[voice.artist];
-  return portrait ? { url: portrait, position: "center 25%" } : null;
+  return { url: ARTIST_PORTRAIT[voice.artist], position: "center 25%" };
 }
 
 /** "Julian", "Alex", "Posty" — for prose like "How much Julian". */
 export function artistShort(voice: Voice): string {
   return voice.label.split(" ")[0];
-}
-
-/** The small print under a button: the year, or "auto". */
-export function yearLabel(voice: Voice): string {
-  return voice.category === "auto" ? "auto" : (voice.era.split(" · ")[1] ?? "");
 }
 
 /**

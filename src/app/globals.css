@@ -264,7 +264,6 @@ body {
   font-weight: 800;
 }
 
-.seg-voice { display: flex; flex-direction: column; gap: 1px; flex: 1 1 30%; }
 
 /* --- sleeve picker -------------------------------------------------------------
    Pick by artwork, not by reading a list. Each voice's generated sleeve is the
@@ -327,15 +326,6 @@ body {
     inset 0 0 0 1px rgba(255, 255, 255, 0.2);
   transform: translateY(-2px);
 }
-.seg-name { display: block; }
-.seg-year {
-  display: block;
-  font-family: var(--font-term), monospace;
-  font-size: 11px;
-  line-height: 1;
-  color: var(--fg-dim);
-}
-.seg-on .seg-year { color: rgba(6, 34, 43, 0.75); }
 
 .voice-varies {
   font-size: 11px;
@@ -1013,7 +1003,6 @@ details[open] .panel-toggle-chev { transform: rotate(180deg); }
   background: color-mix(in srgb, var(--ok) 7%, transparent);
 }
 
-.room-print-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
 .room-print-title {
   display: inline-flex;
   align-items: center;
@@ -1024,14 +1013,6 @@ details[open] .panel-toggle-chev { transform: rotate(180deg); }
   text-transform: uppercase;
   color: var(--ok);
 }
-.room-print-state {
-  margin-left: auto;
-  font-family: var(--font-term), monospace;
-  font-size: 12px;
-  color: var(--fg-muted);
-}
-.room-print-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-.room-print-note { font-size: 11px; line-height: 1.45; color: var(--fg-dim); }
 
 /* --- info popovers -------------------------------------------------------------
    A popover, not a tooltip: hover does not exist on a phone, and these hold
@@ -1234,7 +1215,6 @@ details[open] > summary::before { content: "▾ "; }
   /* Three stacked button rows now (source, category, voice), so their
      padding is the cheapest thing to reclaim before the platter shrinks. */
   .seg { padding: 3px 8px; }
-  .seg-year { font-size: 10px; }
   .sleeve-art { max-width: 34px; }
   .vinyl-caption { font-size: 11px; }
   /* The toggle bar is the price of making the panel findable; on a short

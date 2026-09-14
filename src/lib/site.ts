@@ -34,9 +34,6 @@ function resolve(): string {
 
 export const SITE_URL = resolve();
 
-/** True once the site has a real home — guards sitemap/canonical emission. */
-export const SITE_PUBLISHED = !SITE_URL.startsWith("http://localhost");
-
 export const SITE_NAME = "soundslikethestrokes";
 
 /**
@@ -46,8 +43,6 @@ export const SITE_NAME = "soundslikethestrokes";
  */
 export const SITE_TITLE = "Live autotune voice changer, in your browser";
 
-export const SITE_TAGLINE = "Speak. Come out autotuned.";
-
 /**
  * The meta description. Not a ranking factor, but it IS the snippet people
  * choose from, so it names the effect, the price and the privacy fact — the
@@ -55,21 +50,6 @@ export const SITE_TAGLINE = "Speak. Come out autotuned.";
  */
 export const SITE_DESCRIPTION =
   "Speak into your mic and hear yourself hard-autotuned, overdriven and band-limited — live, as you talk. Free, no signup, and your voice never leaves the browser.";
-
-/**
- * Search engines stopped using the keywords meta tag two decades ago, so this
- * is NOT that - it is emitted nowhere. It is the vocabulary the guide page and
- * the descriptions are written to cover, kept in one place on purpose.
- */
-export const SITE_TOPICS = [
-  "autotune voice changer",
-  "live autotune online",
-  "real time voice effects",
-  "hard tune vocal effect",
-  "megaphone vocal effect",
-  "browser voice changer",
-  "free autotune microphone",
-];
 
 /** `featureList` in the structured data. */
 export const SITE_FEATURES = [

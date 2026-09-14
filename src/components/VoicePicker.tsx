@@ -1,6 +1,5 @@
 "use client";
 
-import { LabelArt } from "./LabelArt";
 import {
   CATEGORIES,
   albumLabel,
@@ -52,17 +51,10 @@ export function VoicePicker({
             title={albumLabel(v)}
             onClick={() => onSelect(v)}
           >
-            {(() => {
-              const c = coverFor(v);
-              return c ? (
-                <span
-                  className="sleeve-art sleeve-cover"
-                  style={{ backgroundImage: `url("${c.url}")`, backgroundPosition: c.position }}
-                />
-              ) : (
-                <LabelArt art={v.art} shape="sleeve" className="sleeve-art" />
-              );
-            })()}
+            <span
+              className="sleeve-art sleeve-cover"
+              style={{ backgroundImage: `url("${coverFor(v).url}")`, backgroundPosition: coverFor(v).position }}
+            />
             <span className="sleeve-name">{shortLabel(v)}</span>
           </button>
         ))}

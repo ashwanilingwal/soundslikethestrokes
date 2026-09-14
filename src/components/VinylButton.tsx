@@ -3,7 +3,6 @@
 import type { CSSProperties } from "react";
 import type { VoiceStatus } from "@/hooks/useVoiceFx";
 import { coverFor, discLabel, type Voice } from "@/lib/audio/voices";
-import { LabelArt } from "./LabelArt";
 
 /**
  * The record IS the button, and it is a picture disc: the artwork covers the
@@ -47,9 +46,7 @@ export function VinylButton({
   } as CSSProperties;
 
   const cover = coverFor(voice);
-  const coverStyle: CSSProperties = cover
-    ? { backgroundImage: `url("${cover.url}")`, backgroundPosition: cover.position }
-    : {};
+  const coverStyle: CSSProperties = { backgroundImage: `url("${cover.url}")`, backgroundPosition: cover.position };
 
   return (
     <div className="flex flex-col items-center gap-1.5">
@@ -63,11 +60,7 @@ export function VinylButton({
         style={artStyle}
       >
         <span className={`vinyl-disc ${active ? "vinyl-spin" : ""}`}>
-          {cover ? (
-            <span className="vinyl-art vinyl-cover" style={coverStyle} />
-          ) : (
-            <LabelArt art={voice.art} className="vinyl-art" />
-          )}
+          <span className="vinyl-art vinyl-cover" style={coverStyle} />
           <span className="vinyl-grooves" aria-hidden />
           <span className="vinyl-label">
             <span className="vinyl-label-text">{active ? activeLabel : opening ? "…" : idleLabel}</span>

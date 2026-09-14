@@ -15,7 +15,9 @@ import "./globals.css";
  * The pixel font this replaced was the legibility problem with the previous
  * skin: charming at 24px, unreadable at 9px, and every label here is 9px.
  */
-const grotesk = Space_Grotesk({ variable: "--font-grotesk", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+// 400/600/700 only: nothing here sets weight 500, and each weight is a
+// separate font file on the critical path.
+const grotesk = Space_Grotesk({ variable: "--font-grotesk", subsets: ["latin"], weight: ["400", "600", "700"] });
 const term = VT323({ variable: "--font-term", subsets: ["latin"], weight: "400" });
 
 /**

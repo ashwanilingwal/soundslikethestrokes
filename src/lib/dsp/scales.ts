@@ -24,7 +24,7 @@ export function majorMask(root: number): ScaleMask {
   return maskFromSteps(root, MAJOR_STEPS);
 }
 
-export function minorMask(root: number): ScaleMask {
+function minorMask(root: number): ScaleMask {
   return maskFromSteps(root, MINOR_STEPS);
 }
 
@@ -35,17 +35,8 @@ export function maskFor(choice: ScaleChoice): ScaleMask {
   return choice.kind === "major" ? majorMask(choice.root) : minorMask(choice.root);
 }
 
-export function scaleLabel(choice: ScaleChoice): string {
-  if (choice.kind === "chromatic") return "Chromatic";
-  return `${NOTE_NAMES[choice.root]} ${choice.kind}`;
-}
-
 export function hzToMidi(hz: number): number {
   return 69 + 12 * Math.log2(hz / 440);
-}
-
-export function midiToHz(midi: number): number {
-  return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
 /** "A3", "C#4"... from a (rounded) midi number. */
