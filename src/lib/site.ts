@@ -37,6 +37,13 @@ export const SITE_URL = resolve();
 export const SITE_NAME = "soundslikethestrokes";
 
 /**
+ * Who to write to about personal data - GDPR Art. 13 wants a contact, and
+ * AdSense wants a reachable privacy policy. Empty renders no contact line
+ * rather than a made-up one. Fill in an address you are happy to publish.
+ */
+export const PRIVACY_CONTACT = "";
+
+/**
  * The <title>. Kept under ~60 characters so search results show all of it,
  * and led by what someone would actually type rather than by the brand — a
  * made-up word nobody searches for is a poor first 30 characters.

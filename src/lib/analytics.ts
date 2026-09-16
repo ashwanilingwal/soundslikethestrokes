@@ -35,15 +35,26 @@ export const analyticsEnabled = /^G-[A-Z0-9]{6,}$/i.test(GA_ID);
 /**
  * Must run BEFORE gtag.js executes - hence an inline <head> script placed
  * ahead of a deferred gtag.js in the root layout. `wait_for_update` holds the
- * first hit for up to 500 ms so a stored "granted" applied right after
- * hydration counts for it.
+ * first hit for up to a second so the answer ConsentProvider pushes right
+ * after hydration - a stored choice, or an opt-out region's implicit yes -
+ * counts for it. If hydration is slower than that, the first hit goes out
+ * cookieless and cookies start with the next event: an undercount, never an
+ * over-collection.
  * `function gtag(){dataLayer.push(arguments)}` is Google's verbatim shim: it
  * pushes the Arguments object, and gtag.js only recognises commands in that
  * shape - pushing an array instead is silently ignored.
  */
 export const CONSENT_DEFAULT =
   "window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}" +
-  "gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',wait_for_update:500});";
+  // Denied EVERYWHERE, deliberately not a region-scoped default. Consent
+  // Mode can take a `region:` list, but Google then resolves the region from
+  // the IP itself - and where its answer differs from our proxy's, the tag
+  // would grant itself and set cookies under a banner saying nothing runs
+  // (seen: an unknown-region request treated as opt-in by us, granted by
+  // Google). So the tag starts denied for everyone and ConsentProvider
+  // pushes the real answer - granted for opt-out regions - inside the
+  // wait window. Our verdict is the only one that counts.
+  "gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',wait_for_update:1000});";
 
 declare global {
   interface Window {

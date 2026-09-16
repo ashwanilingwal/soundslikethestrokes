@@ -1193,6 +1193,13 @@ details[open] > summary::before { content: "▾ "; }
   line-height: 1.45;
   color: var(--fg-muted);
 }
+.consent-copy a { color: var(--fg); text-decoration: underline; text-underline-offset: 2px; }
+
+/* Privacy page: the guide's shell, plus a plain link list. */
+.legal-links { display: flex; flex-direction: column; gap: 6px; padding-left: 18px; font-size: 12.5px; line-height: 1.5; }
+.legal-links li { list-style: "↗ "; color: var(--fg-muted); }
+.legal-links a, .guide-deeper a { color: var(--cyan); text-decoration: underline; text-underline-offset: 3px; }
+.legal-links a:hover, .guide-deeper a:hover { color: var(--fg); }
 
 .consent-actions { display: flex; gap: 7px; margin-inline-start: auto; }
 

@@ -18,6 +18,23 @@
  *   NEXT_PUBLIC_ADSENSE_SLOT    0000000000  (one display unit's slot id)
  */
 
+/**
+ * AdSense's own rule for opt-in regions, separate from the law: since 2024
+ * it will not serve ads - not even non-personalised ones - to EEA/UK/CH
+ * visitors unless consent came through a Google-certified CMP (TCF v2.2).
+ * A hand-built banner, however lawful, is not one, so with this off the
+ * site is compliant there but earns nothing there.
+ *
+ * Google's certified message is a dashboard setting (AdSense -> Privacy &
+ * messaging -> GDPR -> create and publish), and it is shown BY the ads
+ * script, which therefore has to be on the page before consent. Flip this
+ * to true after enabling it: the script then always loads, Google's message
+ * becomes the consent UI in opt-in regions (it also drives Consent Mode for
+ * the GA tag), and our banner steps aside there while still serving
+ * everywhere else.
+ */
+export const ADSENSE_GOOGLE_MESSAGE = false;
+
 /** Owner's AdSense publisher id. */
 const DEFAULT_CLIENT = "ca-pub-4933889703451538";
 

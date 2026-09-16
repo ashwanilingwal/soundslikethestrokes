@@ -1,11 +1,12 @@
 /**
  * Cookie consent, stored per browser, exposed as an external store.
  *
- * Two gates of different hardness. Ads: until the visitor chooses, the
- * AdSense script is not rendered at all. Analytics: the gtag is always
- * present under Consent Mode v2 with every storage type denied - it sets no
- * cookie and sends only anonymous pings until "granted" is pushed - because
- * a tag that is absent until Accept is a tag Google's detector can never see.
+ * Region-aware. In opt-in jurisdictions (see consentRegion.ts) nothing
+ * non-essential runs until the visitor says yes: the AdSense script is not
+ * rendered at all, and the always-present GA tag sits in Consent Mode with
+ * every storage type denied. Elsewhere the law is opt-out, so tracking is on
+ * until withdrawn through "cookie choices". An explicit choice, either way,
+ * always wins over the regional default - ConsentProvider resolves that.
  *
  * Modelled as a subscribable store rather than React state because that is
  * what localStorage actually is: mutable data owned outside React, which can
@@ -17,7 +18,53 @@
  * declining costs them nothing.
  */
 
+import { REGION_COOKIE, REGION_OPTOUT } from "./consentRegion";
+
 export type ConsentState = "unknown" | "granted" | "denied";
+
+/**
+ * What actually applies, given the visitor's explicit choice (or none) and
+ * their region. An explicit choice always wins. With none, an opt-in region
+ * is "unknown" - nothing runs and the banner is up - while everywhere else
+ * tracking runs until opted out, which is what those jurisdictions allow.
+ * Pure, so the eval can walk every combination.
+ */
+export function effectiveConsent(stored: ConsentState, required: boolean): ConsentState {
+  if (stored !== "unknown") return stored;
+  return required ? "unknown" : "granted";
+}
+
+/**
+ * Whether the banner should be on screen. It appears only when there is no
+ * explicit choice AND either the region requires one or the visitor asked
+ * to reconsider - and not when Google's certified message is the consent
+ * UI for that region (unless the visitor deliberately reopened ours).
+ */
+export function bannerVisible(opts: {
+  stored: ConsentState;
+  required: boolean;
+  reopened: boolean;
+  googleMessage: boolean;
+  trackingConfigured: boolean;
+}): boolean {
+  const { stored, required, reopened, googleMessage, trackingConfigured } = opts;
+  if (!trackingConfigured || stored !== "unknown") return false;
+  if (!required && !reopened) return false;
+  if (googleMessage && required && !reopened) return false;
+  return true;
+}
+
+/**
+ * Does this visitor's region require opt-in? Read from the cookie the proxy
+ * writes (see src/proxy.ts). Absent - local dev, or a host without the geo
+ * header - means REQUIRED, the safe direction. Does not change during a
+ * visit, so it is not part of the subscribable store.
+ */
+export function readRegionRequired(): boolean {
+  if (typeof document === "undefined") return true;
+  const hit = document.cookie.split(";").map((c) => c.trim()).find((c) => c.startsWith(`${REGION_COOKIE}=`));
+  return hit?.slice(REGION_COOKIE.length + 1) !== REGION_OPTOUT;
+}
 
 /** Versioned: bump the suffix to re-ask everyone after a policy change. */
 export const CONSENT_KEY = "sslts.consent.v1";

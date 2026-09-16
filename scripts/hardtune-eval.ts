@@ -16,6 +16,8 @@ import { PROCESSOR_SOURCE } from "../src/lib/audio/graph";
 import { ARTIST_PORTRAIT, ARTISTS, CATEGORIES, resolveParams, voiceForCategory, voicesIn, VOICES } from "../src/lib/audio/voices";
 import { fromCsv, toCsv } from "../src/lib/audio/presetFile";
 import { assessRoom } from "../src/lib/roomCheck";
+import { CONSENT_REQUIRED_REGIONS, consentRequiredFor } from "../src/lib/consentRegion";
+import { bannerVisible, effectiveConsent, type ConsentState } from "../src/lib/consent";
 import { CHROMATIC, majorMask, hzToMidi } from "../src/lib/dsp/scales";
 
 const SR = 48000;
@@ -631,6 +633,56 @@ function sine(hzAt: (t: number) => number, seconds: number, amp = 0.4): Float32A
     bad.length === 0,
     bad.length ? bad.slice(0, 3).join("; ") : "every album voice <= 65 ms from 70% match up, exact at 100%",
   );
+}
+
+// ------------------ (v) the opt-in region list is complete and fails safe
+// EU 27 + Iceland, Liechtenstein, Norway + UK + Switzerland = 32. A country
+// missing from this list is a country where tracking would run without
+// asking, so the count is pinned, and an UNKNOWN country must ask.
+{
+  const eu27 = ["AT","BE","BG","HR","CY","CZ","DK","EE","FI","FR","DE","GR","HU","IE","IT","LV","LT","LU","MT","NL","PL","PT","RO","SK","SI","ES","SE"];
+  const missing = [...eu27, "IS", "LI", "NO", "GB", "CH"].filter((c) => !CONSENT_REQUIRED_REGIONS.includes(c));
+  const ok =
+    missing.length === 0 &&
+    CONSENT_REQUIRED_REGIONS.length === 32 &&
+    consentRequiredFor(null) && consentRequiredFor("") && consentRequiredFor("de") &&
+    !consentRequiredFor("IN") && !consentRequiredFor("US");
+  check("v  opt-in region list is complete and fails safe", ok, missing.length ? `missing ${missing.join(",")}` : `${CONSENT_REQUIRED_REGIONS.length} regions; unknown -> ask, IN/US -> opt-out`);
+}
+
+// ---------------- (w) consent resolution: opt-in asks, opt-out runs, a choice wins
+// The dev server has no geo header, so the browser can only ever exercise
+// the opt-in path locally. The branching is pure, so walk all of it here.
+{
+  const bad: string[] = [];
+  const expectEff: [ConsentState, boolean, string][] = [
+    ["unknown", true, "unknown"],   // EEA, no choice: nothing runs
+    ["unknown", false, "granted"],  // opt-out region, no choice: runs
+    ["denied", false, "denied"],    // opted out anywhere: off
+    ["granted", true, "granted"],   // accepted in the EEA: on
+    ["denied", true, "denied"],
+  ];
+  for (const [stored, required, want] of expectEff) {
+    const got = effectiveConsent(stored, required);
+    if (got !== want) bad.push(`effective(${stored},${required})=${got}`);
+  }
+  const base: Parameters<typeof bannerVisible>[0] = { stored: "unknown", required: true, reopened: false, googleMessage: false, trackingConfigured: true };
+  const expectBanner: [Partial<typeof base>, boolean, string][] = [
+    [{}, true, "EEA first visit shows"],
+    [{ required: false }, false, "opt-out region shows nothing"],
+    [{ required: false, reopened: true }, true, "opt-out region, cookie choices reopens"],
+    [{ stored: "granted" }, false, "already chosen: no banner"],
+    [{ stored: "denied", reopened: true }, false, "reopen clears the choice first; a choice present never shows"],
+    [{ googleMessage: true }, false, "Google's message handles the EEA"],
+    [{ googleMessage: true, reopened: true }, true, "…unless deliberately reopened"],
+    [{ googleMessage: true, required: false }, false, "Google's message, opt-out region: nothing"],
+    [{ trackingConfigured: false }, false, "nothing configured: nothing to ask"],
+  ];
+  for (const [over, want, why] of expectBanner) {
+    const got = bannerVisible({ ...base, ...over });
+    if (got !== want) bad.push(`banner: ${why} -> ${got}`);
+  }
+  check("w  consent resolves: opt-in asks, opt-out runs, a choice wins", bad.length === 0, bad.length ? bad.slice(0, 3).join("; ") : `${expectEff.length + expectBanner.length} cases`);
 }
 
 console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) FAILED`);

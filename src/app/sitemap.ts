@@ -4,7 +4,7 @@ import { SITE_URL } from "@/lib/site";
 /**
  * Serves /sitemap.xml.
  *
- * Two pages, which is the honest size of this site. A sitemap padded with
+ * Three pages, which is the honest size of this site. A sitemap padded with
  * every route that resolves is not a bigger site, it is a diluted one.
  *
  * `lastModified` is a hand-maintained constant rather than `new Date()`: a
@@ -27,6 +27,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: CONTENT_UPDATED,
       changeFrequency: "monthly",
       priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/privacy`,
+      lastModified: CONTENT_UPDATED,
+      changeFrequency: "yearly",
+      priority: 0.2,
     },
   ];
 }
